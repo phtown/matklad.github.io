@@ -1,0 +1,1558 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<link href="https://matklad.github.io/feed.xml" rel="self" type="application/atom+xml"/>
+<link href="https://matklad.github.io" rel="alternate" type="text/html"/>
+<updated>2023-03-28T21:17:01.595Z</updated>
+<id>https://matklad.github.io/feed.xml</id>
+<title type="html">matklad</title>
+<subtitle>Yet another programming blog by Alex Kladov aka matklad.</subtitle>
+<author><name>Alex Kladov</name></author>
+
+<entry>
+<title type="text">Rust Is a Scalable Language</title>
+<link href="https://matklad.github.io/2023/03/28/rust-is-a-scalable-language.html" rel="alternate" type="text/html" title="Rust Is a Scalable Language" />
+<published>2023-03-28T00:00:00+00:00</published>
+<updated>2023-03-28T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/03/28/rust-is-a-scalable-language</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[In my last post about Zig and Rust, I mentioned that Rust is a scalable language.
+Let me expand on this a bit.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/03/28/rust-is-a-scalable-language.html"><![CDATA[
+    <h1>
+    <a href="#Rust-Is-a-Scalable-Language">Rust Is a Scalable Language <time datetime="2023-03-28">Mar 28, 2023</time></a>
+    </h1>
+<p>In my last post about <a href="https://matklad.github.io/2023/03/26/zig-and-rust.html"><em>Zig and Rust</em></a>, I mentioned that Rust is a &ldquo;scalable language&rdquo;.
+Let me expand on this a bit.</p>
+<section id="Vertical-Scalability">
+
+    <h2>
+    <a href="#Vertical-Scalability">Vertical Scalability </a>
+    </h2>
+<p>Rust is vertically scalable, in that you can write all kinds of software in it.
+You can write an advanced zero-alloc image compression library, build a web server exposing the library to the world as an HTTP SAAS, and cobble together a &ldquo;script&rdquo; for building, testing, and deploying it to wherever people deploy software these days.
+And you would only need Rust &mdash; while it excels in the lowest half of the stack, it&rsquo;s pretty ok everywhere else too.</p>
+</section>
+<section id="Horizontal-Scalability">
+
+    <h2>
+    <a href="#Horizontal-Scalability">Horizontal Scalability </a>
+    </h2>
+<p>Rust is horizontally scalable, in that you can easily parallelize development of large software artifacts across many people and teams.
+Rust itself moves with a breakneck speed, which is surprising for such a loosely coordinated and chronically understaffed open source project of this scale.
+Relatively small community  managed to put together a comprehensive ecosystem of composable high-quality crates on a short notice.
+Rust is so easy to compose reliably that even the stdlib itself does not shy from pulling dependencies from crates.io.</p>
+<p>Steve Klabnik wrote about <a href="https://steveklabnik.com/writing/rusts-golden-rule"><em>Rust&rsquo;s Golden Rule</em></a>,
+how function signatures are mandatory and authoritative and explicitly define the interface both for the callers of the function and for the function&rsquo;s body.
+This thinking extends to other parts of the language.</p>
+<p>My second most favorite feature of Rust (after safety) is its module system.
+It has first-class support for the concept of a library.
+Library is called a crate and is a tree of modules, a unit of compilation, and a principle visibility boundary.
+Modules can contain circular dependencies, but libraries always form a directed acyclic graph.
+There&rsquo;s no global namespace of symbols &mdash; libraries are anonymous, names only appear on dependency edges between two libraries, and are local to the downstream crate.</p>
+<p>The benefits of this core compilation model are then greatly amplified by Cargo, which is not a generalized task runner, but rather a rigid specification for what is a package of Rust code:</p>
+<ul>
+<li>
+a (library) crate,
+</li>
+<li>
+a manifest, which defines dependencies between packages in a declarative way, using semver,
+</li>
+<li>
+an ecosystem-wide agreement on the semantics of dependency specification, and accompanied dependency resolution algorithm.
+</li>
+</ul>
+<p>Crucially, there&rsquo;s absolutely no way in Cargo to control the actual build process.
+The <code>build.rs</code> file can be used to provide extra runtime inputs, but it&rsquo;s <code>cargo</code> who calls <code>rustc</code>.</p>
+<p>Again, Cargo defines a rigid interface for a reusable piece of Rust code.
+Both producers and consumers must abide by these rules, there is no way around them.
+As a reward, they get a super-power of working together by working apart.
+I don&rsquo;t need to ping dtolnay in Slack when I want to use serde-json because we implicitly pre-agreed to a shared golden rule.</p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Zig And Rust</title>
+<link href="https://matklad.github.io/2023/03/26/zig-and-rust.html" rel="alternate" type="text/html" title="Zig And Rust" />
+<published>2023-03-26T00:00:00+00:00</published>
+<updated>2023-03-26T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/03/26/zig-and-rust</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[This post will be a bit all over the place.
+Several months ago, I wrote Hard Mode Rust, exploring an allocation-conscious style of programming.
+In the ensuing discussion, @jamii name-dropped TigerBeetle, a reliable, distributed, fast, and small database written in Zig in a similar style, and, well, I now find myself writing Zig full-time, after more than seven years of Rust.
+This post is a hand-wavy answer to the why? question.
+It is emphatically not a balanced and thorough comparison of the two languages.
+I haven't yet written my 100k lines of Zig to do that.
+(if you are looking for a more general what the heck is Zig, I can recommend @jamii's post).
+In fact, this post is going to be less about languages, and more about styles of writing software (but pre-existing knowledge of Rust and Zig would be very helpful).
+Without further caveats, let's get started.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/03/26/zig-and-rust.html"><![CDATA[
+    <h1>
+    <a href="#Zig-And-Rust">Zig And Rust <time datetime="2023-03-26">Mar 26, 2023</time></a>
+    </h1>
+<p>This post will be a bit all over the place.
+Several months ago, I wrote <a href="https://matklad.github.io/2022/10/06/hard-mode-rust.html"><em>Hard Mode Rust</em></a>, exploring an allocation-conscious style of programming.
+In the ensuing discussion, <a href="https://github.com/Jamii">@jamii</a> name-dropped <a href="https://tigerbeetle.com">TigerBeetle</a>, a reliable, distributed, fast, and small database written in Zig in a similar style, and, well, I now find myself writing Zig full-time, after more than seven years of Rust.
+This post is a hand-wavy answer to the &ldquo;why?&rdquo; question.
+It is emphatically <em>not</em> a balanced and thorough comparison of the two languages.
+I haven&rsquo;t yet written my <a href="https://matklad.github.io/2021/09/05/Rust100k.html">100k lines of Zig</a> to do that.
+(if you are looking for a more general &ldquo;what the heck is Zig&rdquo;, I can recommend <a href="https://www.scattered-thoughts.net/writing/assorted-thoughts-on-zig-and-rust/">@jamii&rsquo;s post</a>).
+In fact, this post is going to be less about languages, and more about styles of writing software (but pre-existing knowledge of Rust and Zig would be very helpful).
+Without further caveats, let&rsquo;s get started.</p>
+<section id="Reliable-Software">
+
+    <h2>
+    <a href="#Reliable-Software">Reliable Software </a>
+    </h2>
+<p>To the first approximation, we all strive to write bug-free programs.
+But I think a closer look reveals that we don&rsquo;t actually care about programs being correct 100% of the time, at least in the majority of the domains.
+Empirically, almost every program has bugs, and yet it somehow works out OK.
+To pick one specific example, most programs use stack, but almost no programs understand what their stack usage is exactly, and how far they can go.
+When we call <code>malloc</code>, we just hope that we have enough stack space for it, we almost never check.
+Similarly, all Rust programs abort on OOM, and can&rsquo;t state their memory requirements up-front.
+Certainly good enough, but not perfect.</p>
+<p>The second approximation is that we strive to balance program usefulness with the effort to develop the program.
+Bugs reduce usefulness a lot, and there are two styles of software engineering to deal with the:</p>
+<p><em>Erlang style</em>, where we embrace failability of both hardware and software and explicitly design programs to be resilient to partial faults.</p>
+<p><a href="https://www.sqlite.org/testing.html"><em>SQLite style</em></a>, where we overcome an unreliable environment at the cost of rigorous engineering.</p>
+<p>rust-analyzer and TigerBeetle are perfect specimens of the two approaches, let me describe them.</p>
+</section>
+<section id="rust-analyzer">
+
+    <h2>
+    <a href="#rust-analyzer">rust-analyzer </a>
+    </h2>
+<p><a href="https://rust-analyzer.github.io">rust-analyzer</a> is an LSP server for the Rust programming language.
+By its nature, it&rsquo;s expansive.
+Great developer tools usually have a feature for every niche use-case.
+It also is a fast-moving open source project which has to play catch-up with the <code>rustc</code> compiler.
+Finally, the nature of IDE dev tooling makes availability significantly more important than correctness.
+An erroneous completion option would cause a smirk (if it is noticed at all), while the server crashing and all syntax highlighting turning off will be noticed immediately.</p>
+<p>For this cluster of reasons, rust-analyzer is shifted far towards the &ldquo;embrace software imperfections&rdquo; side of the spectrum.
+rust-analyzer is designed around having bugs.
+All the various features are carefully compartmentalized at runtime, such that panicking code in just a single feature can&rsquo;t bring down the whole process.
+Critically, almost no code has access to any mutable state, so usage of <code>catch_unwind</code> can&rsquo;t lead to a rotten state.</p>
+<p>Development process <em>itself</em> is informed by this calculus.
+For example, PRs with new features land when there&rsquo;s a reasonable certainty that the happy case works correctly.
+If some weird incomplete code would cause the feature to crash, that&rsquo;s OK.
+It might be even a benefit &mdash; fixing a well-reproducible bug in an isolated feature is a gateway drug to heavy contribution to rust-analyzer.
+Our tight weekly release schedule (and the nightly release) help to get bug fixes out there faster.</p>
+<p>Overall, the philosophy is to maximize provided value by focusing on the common case.
+Edge cases become eventually correct over time.</p>
+</section>
+<section id="TigerBeetle">
+
+    <h2>
+    <a href="#TigerBeetle">TigerBeetle </a>
+    </h2>
+<p>TigerBeetle is the opposite of that.</p>
+<p>It is a database, with domain model fixed at compile time (we currently do double-entry bookkeeping).
+The database is distributed, meaning that there are six TigerBeetle replicas running on different geographically and operationally isolated machines, which together implement a replicated state machine.
+That is, TigerBeetle replicas exchange messages to make sure every replica processes the same set of transactions, in the same order.
+That&rsquo;s a surprisingly hard problem if you allow machines to fail (the whole point of using many machines for redundancy), so we use a smart <a href="https://pmg.csail.mit.edu/papers/vr-revisited.pdf">consensus algorithm</a>  (non-byzantine) for this.
+Traditionally, consensus algorithms assume reliable storage &mdash; data once written to disk can be always retrieved later.
+In reality, storage is unreliable, nearly byzantine &mdash; a disk can return bogus data without signaling an error, and even a single such error can <a href="https://www.usenix.org/conference/fast18/presentation/alagappan">break consensus</a>.
+TigerBeetle combats that by allowing a replica to repair its local storage using data from other replicas.</p>
+<p>On the engineering side of things, we are building a reliable, predictable system.
+And predictable means <em>really</em> predictable.
+Rather than reigning in sources of non-determinism, we build the whole system from the ground up from a set of fully deterministic, hand crafted components.
+Here are some of our unconventional choices (<a href="https://github.com/tigerbeetledb/tigerbeetle/blob/fe09404d465df46b2bdfc017633eff37b4ab2343/docs/DESIGN.md">design doc</a>):</p>
+<p>It&rsquo;s <a href="https://matklad.github.io/2022/10/06/hard-mode-rust.html">hard mode</a>!
+We allocate all the memory at a startup, and there&rsquo;s zero allocation after that.
+This removes all the uncertainty about allocation.</p>
+<p>The code is architected with brutal simplicity.
+As a single example, we don&rsquo;t use JSON, or ProtoBuf, or Cap&rsquo;n&rsquo;Proto for serialization.
+Rather, we just cast the bytes we received from the network to a desired type.
+The motivation here is not so much performance, as reduction of the number of moving parts.
+Parsing is hard, but, if you control both sides of the communication channel, you don&rsquo;t need to do it, you can send checksummed data as is.</p>
+<p>We aggressively minimize all dependencies.
+We know exactly the system calls our system is making, because all IO is our own code (on Linux, our main production platform, we don&rsquo;t link libc).</p>
+<p>There&rsquo;s little abstraction between components &mdash; all parts of TigerBeetle work in concert.
+For example, one of our core types, <a href="https://github.com/tigerbeetledb/tigerbeetle/blob/fe09404d465df46b2bdfc017633eff37b4ab2343/src/message_pool.zig#L64"><code>Message</code></a>, is used throughout the stack:</p>
+<ul>
+<li>
+network receives bytes from a TCP connection directly into a <code>Message</code>
+</li>
+<li>
+consensus processes and sends <code>Message</code>s
+</li>
+<li>
+similarly, storage writes <code>Message</code>s to disk
+</li>
+</ul>
+<p>This naturally leads to very simple and fast code.
+We don&rsquo;t need to do anything special to be zero copy &mdash; given that we allocate everything up-front, we simply don&rsquo;t have any extra memory to copy the data to!
+(A separate issue is that, arguably, you just can&rsquo;t treat storage as a separate black box in a fault-tolerant distributed system, because storage is also faulty).</p>
+<p><em>Everything</em> in TigerBeetle has an explicit upper-bound.
+There&rsquo;s not a thing which is <em>just</em> an <code>u32</code> &mdash; all data is checked to meet specific numeric limits at the edges of the system.</p>
+<p>This includes <code>Message</code>s.
+We just upper-bound how many messages can be in-memory at the same time, and allocate precisely that amount of messages (<a href="https://github.com/tigerbeetledb/tigerbeetle/blob/53092098d69cc8facf94a2472bc79ca9d525a605/src/message_pool.zig#L16-L40">source</a>).
+Getting a new message from the message pool can&rsquo;t allocate and can&rsquo;t fail.</p>
+<p>With all that strictness and explicitness about resources, of course we also fully externalize any IO, including time.
+<em>All</em> inputs are passed in explicitly, there&rsquo;s no ambient influences from the environment.
+And that means that the bulk of our testing consists of trying all possible permutations of effects of the environment.
+Deterministic randomized simulation is <a href="https://dl.acm.org/doi/10.1145/3158134">very effective</a> at uncovering issues in real implementations of distributed systems.</p>
+<p>What I am getting at is that TigerBeetle isn&rsquo;t really a normal &ldquo;program&rdquo; program.
+It strictly is a finite state machine, explicitly coded as such.</p>
+</section>
+<section id="Back-From-The-Weeds">
+
+    <h2>
+    <a href="#Back-From-The-Weeds">Back From The Weeds </a>
+    </h2>
+<p>Oh, right, Rust and Zig, the topic of the post!</p>
+<p>I find myself often returning to <a href="http://venge.net/graydon/talks/intro-talk.pdf">the first Rust slide deck</a>.
+A lot of core things are different (no longer Rust uses only the old ideas), but a lot is the same.
+To be a bit snarky, while Rust &ldquo;is not for lone genius hackers&rdquo;, Zig &hellip; kinda is.
+On more peaceable terms, while Rust is a language for building <em>modular</em> software, Zig is in some sense anti-modular.</p>
+<p>It&rsquo;s appropriate to quote <a href="https://youtu.be/HgtRAbE1nBM?t=2359">Bryan Cantrill</a> here:</p>
+
+<figure class="blockquote">
+<blockquote><p>I can write C that frees memory properly&hellip;that basically doesn&rsquo;t suffer from
+memory corruption&hellip;I can do that, because I&rsquo;m controlling heaven and earth in
+my software. It makes it very hard to compose software. Because even if you and
+I both know how to write memory safe C, it&rsquo;s very hard for us to have an
+interface boundary where we can agree about who does what.</p>
+</blockquote>
+
+</figure>
+<p>That&rsquo;s the core of what Rust is doing: it provides you with a language to precisely express the contracts between components, such that components can be integrated in a machine-checkable way.</p>
+<p>Zig doesn&rsquo;t do that. It isn&rsquo;t even memory safe. My first experience writing a non-trivial Zig program went like this:</p>
+
+<figure class="blockquote">
+<blockquote><p>ME: Oh wow! Do you mean I can finally <em>just</em> store a pointer to a struct&rsquo;s field in the struct itself?</p>
+<p>30 seconds later</p>
+<p>PROGRAM: Segmentation fault.</p>
+</blockquote>
+
+</figure>
+<p>However!<br>
+Zig <em>is</em> a much smaller language than Rust.
+Although you&rsquo;ll <em>have</em> to be able to keep the entirety of the program in your head, to control heaven and earth to not mess up resource management, doing that could be easier.</p>
+<p>It&rsquo;s not true that rewriting a Rust program in Zig would make it simpler.
+On the contrary, I expect the result to be significantly more complex (and segfaulty).
+I noticed that a lot of Zig code written in &ldquo;let&rsquo;s replace <a href="https://doc.rust-lang.org/rust-by-example/scope/raii.html">RAII</a> with <a href="https://ziglang.org/documentation/master/#defer">defer</a>&rdquo; style has resource-management bugs.</p>
+<p>But it often is possible to architect the software such that there&rsquo;s little resource management to do (eg, allocating everything up-front, like TigerBeetle, or even at compile time, like many smaller embedded systems).
+It&rsquo;s hard &mdash; simplicity is always hard.
+But, if you go this  way, I feel like Zig can provide substantial benefits.</p>
+<p>Zig has just a single feature, dynamically-typed comptime, which subsumes most of the special-cased Rust machinery.
+It is definitely a tradeoff, instantiation-time errors are much worse for complex cases.
+But a lot more of the cases are simple, because there&rsquo;s no need for programming in the language of types.
+Zig is very spartan when it comes to the language.
+There are no closures &mdash; if you want them, you&rsquo;ll have to pack a wide-pointer yourself.
+Zig&rsquo;s expressiveness is aimed at producing just the right assembly, not at allowing maximally concise and abstract source code.
+In the words of Andrew Kelley, Zig is a DSL for emitting machine code.</p>
+<p>Zig strongly prefers explicit resource management.
+A lot of Rust programs are web-servers.
+Most web servers have a very specific execution pattern of processing multiple independent short-lived requests concurrently.
+The most natural way to code this would be to give each request a dedicated bump allocator, which turns drops into no-ops and &ldquo;frees&rdquo; the memory at bulk after each request by resetting offset to zero.
+This would be pretty efficient, and would provide per-request memory profiling and limiting out of the box.
+I don&rsquo;t think any popular Rust frameworks do this &mdash; using the global allocator is convenient enough and creates a strong local optima.
+Zig forces you to pass the allocator in, so you might as well think about the most appropriate one!</p>
+<p>Similarly, the standard library is very conscious about allocation, more so than Rust&rsquo;s.
+Collections are <em>not</em> parametrized by an allocator, like in C++ or (future) Rust.
+Rather, an allocator is passed in explicitly to every method which actually needs to allocate.
+This is <a href="https://matklad.github.io/2020/12/28/csdi.html"><em>Call Site Dependency Injection</em></a>, and it is more flexible.
+For example in TigerBeetle we need a couple of hash maps.
+These maps are sized at a startup time to hold just the right number of elements, and are never resized.
+So we pass an allocator to <a href="https://github.com/tigerbeetledb/tigerbeetle/blob/53092098d69cc8facf94a2472bc79ca9d525a605/src/vsr/replica.zig#L540"><code>init</code></a> method, but we don&rsquo;t pass it to the <a href="https://github.com/tigerbeetledb/tigerbeetle/blob/53092098d69cc8facf94a2472bc79ca9d525a605/src/vsr/replica.zig#L758">event loop</a>.
+We get to both use the standard hash-map, and to feel confident that there&rsquo;s no way we can allocate in the actual event loop, because it doesn&rsquo;t have access to an allocator.</p>
+</section>
+<section id="Wishlist">
+
+    <h2>
+    <a href="#Wishlist">Wishlist </a>
+    </h2>
+<p>Finally, my wishlist for Zig.</p>
+<p><em>First</em>, I think Zig&rsquo;s strength lies strictly in the realm of writing &ldquo;perfect&rdquo; systems software.
+It is a relatively thin slice of the market, but it is important.
+One of the problems with Rust is that we don&rsquo;t have a reliability-oriented high-level programming language with a good quality of implementation (modern ML, if you will).
+This is a blessing for Rust, because it makes its niche bigger, increasing the amount of community momentum behind the language.
+This is also a curse, because a bigger niche makes it harder to maintain focus.
+For Zig, Rust already plays this role of &ldquo;modern ML&rdquo;, which creates bigger pressure to specialize.</p>
+<p><em>Second</em>, my biggest worry about Zig is its semantics around aliasing, provenance, mutability and self-reference ball of problems.
+I don&rsquo;t worry all that much about this creating &ldquo;iterator invalidation&rdquo; style of UB.
+TigerBeetle runs in <code>-DReleaseSafe</code>, which mostly solves spatial memory safety, it doesn&rsquo;t really do dynamic memory allocation, which unasks the question about temporal memory safety,
+and it has a very thorough fuzzer-driven test suite, which squashes the remaining bugs.
+I do worry about the semantics of the language itself.
+My current understanding is that, to correctly compile a C-like low-level language, one really needs to nail down semantics of pointers.
+I am not sure &ldquo;portable assembly&rdquo; is really a thing: it is possible to create a compiler which does little optimization and &ldquo;works as expected&rdquo; most of the time, but I am doubtful that it&rsquo;s possible to correctly describe the behavior of such a compiler.
+If you start asking questions about what are pointers, and what is memory, you end up in a fairly complicated land, where bytes are poison.
+Rust tries to define that precisely, but writing code which abides by the Rust rules without a borrow-checker isn&rsquo;t really possible &mdash; the rules are too subtle.
+Zig&rsquo;s implementation today is <em>very</em> fuzzy around potentially aliased pointers, copies of structs with interior-pointers and the like.
+I wish that Zig had a clear answer to what the desired semantics is.</p>
+<p><em>Third</em>, IDE support.
+I&rsquo;ve written about that before <a href="https://matklad.github.io/2023/02/10/how-a-zig-ide-could-work.html">on this blog</a>.
+As of today, developing Zig is quite pleasant &mdash; <a href="https://github.com/zigtools/zls">the language server</a> is pretty spartan, but already is quite helpful, and for the rest, Zig is exceptionally greppable.
+But, with the lazy compilation model and the absence of out-of-the-language meta programming, I feel like Zig could be more ambitious here.
+To position itself well for the future in terms of IDE support, I think it would be nice if the compiler gets the basic data model for IDE use-case.
+That is, there should be an API to create a persistent analyzer process, which ingests a stream of code edits, and produces a continuously updated model of the code without explicit compilation requests.
+The model can be very simple, just &ldquo;give me an AST of this file inn this point in time&rdquo; would do &mdash; all the fancy IDE features can be filled in later.
+What matters is a shape of data flow through the compiler &mdash; not an edit-compile cycle, but rather a continuously updated view of the world.</p>
+<p><em>Fourth</em>, one of the values of Zig which resonates with me a lot is a preference for low-dependency, self-contained processes.
+Ideally, you get yourself a <code>./zig</code> binary, and go from there.
+The preference, at this time of changes, is to bundle a particular version of <code>./zig</code> with a project, instead of using a system-wide <code>zig</code>.
+There are two aspects that could be better.</p>
+<p>&ldquo;Getting yourself a Zig&rdquo; is a finicky problem, because it requires bootstrapping.
+To do that, you need to run some code that will download the binary for your platform, but each platform has its own way to &ldquo;run code&rdquo;.
+I wish that Zig provided a blessed set of scripts, <code>get_zig.sh</code>, <code>get_zig.bat</code>, etc (or maybe a small actually portable binary?), which projects could just vendor, so that the contribution experience becomes fully project-local and self-contained:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-title function_">$</span> ./get_zig.sh</code>
+<code><span class="hl-title function_">$</span> ./zig build</code></pre>
+
+</figure>
+<p>Once you have <code>./zig</code>, you can use that to drive the <em>rest</em> of the automation.
+You already can <code>./zig build</code> to drive the build, but there&rsquo;s more to software than just building.
+There&rsquo;s always a long tail of small things which traditionally get solved with a pile of platform-dependent bash scripts.
+I wish that Zig pushed the users harder towards specifying all that automation in Zig.
+A picture is worth a thousand words, so</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-comment"># BAD: dependency on the OS</span></code>
+<code><span class="hl-title function_">$</span> ./scripts/deploy.sh --port 92</code>
+<code><span class="hl-output"></span></code>
+<code><span class="hl-comment"># OK: no dependency, but a mouthful to type</span></code>
+<code><span class="hl-title function_">$</span> ./zig build task -- deploy --port 92</code>
+<code><span class="hl-output"></span></code>
+<code><span class="hl-comment"># Would be GREAT:</span></code>
+<code><span class="hl-title function_">$</span> ./zig do deploy --port 92</code></pre>
+
+</figure>
+<p>Attempting to summarize,</p>
+<ul>
+<li>
+Rust is about compositional safety, it&rsquo;s a more scalable language than Scala.
+</li>
+<li>
+Zig is about perfection.
+It is a very sharp, dangerous, but, ultimately, more flexible tool.
+</li>
+</ul>
+<p>Discussion on <a href="https://old.reddit.com/r/Zig/comments/123jpia/blog_post_zig_and_rust/">/r/Zig</a> and <a href="https://old.reddit.com/r/rust/comments/123jpry/blog_post_zig_and_rust/">/r/rust</a>.</p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">An Engine For An Editor</title>
+<link href="https://matklad.github.io/2023/03/08/an-engine-for-an-editor.html" rel="alternate" type="text/html" title="An Engine For An Editor" />
+<published>2023-03-08T00:00:00+00:00</published>
+<updated>2023-03-08T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/03/08/an-engine-for-an-editor</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[A common trope is how, if one wants to build a game, one should build a game, rather than a game engine, because it is all too easy to fall into a trap of building a generic solution, without getting to the game proper.
+It seems to me that the situation with code editors is the opposite --- many people build editors, but few are building editor engines.
+What's an editor engine? A made up term I use to denote a thin waist the editor is build upon, the set of core concepts, entities and APIs which power the variety of editor's components.
+In this post, I will highlight Emacs' thin waist, which I think is worthy of imitation!]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/03/08/an-engine-for-an-editor.html"><![CDATA[
+    <h1>
+    <a href="#An-Engine-For-An-Editor">An Engine For An Editor <time datetime="2023-03-08">Mar 8, 2023</time></a>
+    </h1>
+<p>A common trope is how, if one wants to build a game, one should build a game, rather than a game engine, because it is all too easy to fall into a trap of building a generic solution, without getting to the game proper.
+It seems to me that the situation with code editors is the opposite &mdash; many people build editors, but few are building &ldquo;editor engines&rdquo;.
+What&rsquo;s an &ldquo;editor engine&rdquo;? A made up term I use to denote a <a href="https://www.oilshell.org/blog/2022/02/diagrams.html"><dfn>thin waist</dfn></a> the editor is build upon, the set of core concepts, entities and APIs which power the variety of editor&rsquo;s components.
+In this post, I will highlight Emacs&rsquo; thin waist, which I think is worthy of imitation!</p>
+<p>Before we get to Emacs, lets survey various APIs for building interactive programs.</p>
+<dl>
+<dt>Plain text</dt>
+<dd>
+<p>The simplest possible thing, the UNIX way of programs-filters, reading input from stdin and writing data to stdout.
+The language here is just plain text.</p>
+</dd>
+<dt>ANSI escape sequences</dt>
+<dd>
+<p>Adding escape codes to plain text (and a bunch of <code>ioctl</code>s) allows changing colors and clearing the screen.
+The language becomes a sequence of commands for the terminal (with &ldquo;print text&rdquo; being a fairly frequent one).
+This already is rich enough to power a variety of terminal applications, such as vim!</p>
+</dd>
+<dt>HTML</dt>
+<dd>
+<p>With more structure, we can disentangle ourselves from text, and say that all the stuff is made of trees of attributed elements (whose content might be text).
+That turns out to be enough to express basically whatever, as the world of modern web apps testifies.</p>
+</dd>
+<dt>Canvas</dt>
+<dd>
+<p>Finally, to achieve maximal flexibility, we can start with a clean 2d canvas with pixels and an event stream, and let the app draw however it likes.
+Desktop GUIs usually work that way (using some particular widget library to encapsulate common patterns of presentation and event handling).</p>
+</dd>
+</dl>
+<hr>
+<p>Emacs is different.
+Its thin waist consists of (using idiosyncratic olden editor terminology) frames, windows, buffers and attributed text.
+This is <em>less</em> general than canvas or HTML, but more general (and way more principled) than ANSI escapes.
+Crucially, this also retains most of plain text&rsquo;s <em>composability</em>.</p>
+<p>The foundation is a text with attributes &mdash; a pair of a string and a map from string&rsquo;s subranges to key-value dictionaries.
+Attributes express presentation (color, font, text decoration), but also semantics.
+A range of text can be designated as clickable.
+Or it can specify a custom keymap, which is only active when the cursor is on this range.</p>
+<p>I find this to be a sweet spot for building efficient user interfaces.
+Consider <a href="https://magit.vc">magit</a>:</p>
+
+<figure>
+
+<img alt="" src="/assets/magit.png">
+</figure>
+<p>The interface is built from text, but it is more discoverable, more readable, and more efficient than GUI solutions.</p>
+<p>Text is <a href="https://graydon2.dreamwidth.org/193447.html">surprisingly good</a> at communicating with humans!
+Forgoing arbitrary widgets and restricting oneself to a grid of characters greatly constrains the set of possible designs, but designs which come out of these constraints tend to be better.</p>
+<hr>
+<p>The rest (buffers, windows, and frames) serve to present attributed strings to the user.
+A Buffer holds a piece of text and stores position of the cursor (and the rest of editor&rsquo;s state for this particular piece of text).
+A tiling window manager displays buffers:</p>
+<ul>
+<li>
+there&rsquo;s a set of floating windows (frames in Emacs terminology) managed by a desktop environment
+</li>
+<li>
+each floating window is subdivided into a tree of vertical and horizontal splits (windows) managed by Emacs
+</li>
+<li>
+each split displays a buffer, although some buffers might not have a corresponding split
+</li>
+</ul>
+<p>There&rsquo;s also a tasteful selection of extras outside this orthogonal model.
+A buffer holds a status bar at the bottom and a set of fringe decorations at the left edge.
+Each floating window has a minibuffer &mdash; an area to type commands into (minibuffer <em>is</em> a buffer though &mdash; only presentation is slightly unusual).</p>
+<p>But the vast majority of everything else is not special &mdash; every significant thing is a buffer.
+So, <code>./main.rs</code> file, <code>./src</code> file tree, a terminal session where you type <code>cargo build</code> are all displayed as attributed text.
+All use the same tools for navigation and manipulation.</p>
+<p>Universality is the power of the model.
+Good old UNIX pipes, except interactive.
+With a GUI file manager, mass-renaming files requires <a href="https://apps.kde.org/krename/">a dedicated utility</a>.
+In Emacs, file manager&rsquo;s state is text, so you can use standard text-manipulation tools (regexes, multiple cursors, vim&rsquo;s <kbd><kbd>.</kbd></kbd>) for the same task.</p>
+<section id="Conclusions">
+
+    <h2>
+    <a href="#Conclusions">Conclusions </a>
+    </h2>
+<p>Pay more attention to the editor&rsquo;s thin waist.
+Don&rsquo;t take it as a given that an editor should be a terminal, HTML, or GUI app &mdash; there might be a better vocabulary.
+In particular, Emacs seems to hit the sweet spot with its language of attributed strings and buffers.</p>
+<p>I am not sure that Emacs is the best we can do, but having a Rust library which implements Emacs model more or less as is would be nice!
+The two best resources to learn about this model are</p>
+<ul>
+<li>
+this diagram:<br>
+<a href="https://www2.lib.uchicago.edu/keith/emacs/#org9c6cafa" class="url">https://www2.lib.uchicago.edu/keith/emacs/#org9c6cafa</a>
+</li>
+<li>
+this section of Emacs docs:<br>
+<a href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Text-Properties.html" class="url">https://www.gnu.org/software/emacs/manual/html_node/elisp/Text-Properties.html</a>
+</li>
+</ul>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Why SAT Is Hard</title>
+<link href="https://matklad.github.io/2023/02/21/why-SAT-is-hard.html" rel="alternate" type="text/html" title="Why SAT Is Hard" />
+<published>2023-02-21T00:00:00+00:00</published>
+<updated>2023-02-21T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/02/21/why-SAT-is-hard</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[An introductory post about complexity theory today!
+It is relatively well-known that there exist so-called NP-complete problems --- particularly hard problems, such that, if you solve one of them efficiently, you can solve all of them efficiently.
+I think I've learned relatively early that, e.g., SAT is such a hard problem.
+I've similarly learned a bunch of specific examples of equally hard problems, where solving one solves the other.
+However, why SAT is harder than any NP problem remained a mystery for a rather long time to me.
+It is a shame --- this fact is rather intuitive and easy to understand.
+This post is my attempt at an explanation.
+It assumes some familiarity with the space, but it's not going to be too technical or thorough.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/02/21/why-SAT-is-hard.html"><![CDATA[
+    <h1>
+    <a href="#Why-SAT-Is-Hard">Why SAT Is Hard <time datetime="2023-02-21">Feb 21, 2023</time></a>
+    </h1>
+<p>An introductory post about complexity theory today!
+It is relatively well-known that there exist so-called NP-complete problems &mdash; particularly hard problems, such that, if you solve one of them efficiently, you can solve <em>all</em> of them efficiently.
+I think I&rsquo;ve learned relatively early that, e.g., SAT is such a hard problem.
+I&rsquo;ve similarly learned a bunch of specific examples of equally hard problems, where solving one solves the other.
+However, why SAT is harder than <em>any</em> NP problem remained a mystery for a rather long time to me.
+It is a shame &mdash; this fact is rather intuitive and easy to understand.
+This post is my attempt at an explanation.
+It assumes <em>some</em> familiarity with the space, but it&rsquo;s not going to be too technical or thorough.</p>
+<section id="Summary">
+
+    <h2>
+    <a href="#Summary">Summary </a>
+    </h2>
+<p>Let&rsquo;s say you are solving some search problem, like &ldquo;find a path that visits every vertex in a graph once&rdquo;.
+It is often possible to write a naive algorithm for it, where we exhaustively check every possible prospective solution:</p>
+
+<figure class="code-block">
+
+
+<pre><code>for every possible path:</code>
+<code>    if path visits every vertex once:</code>
+<code>        return path</code>
+<code>else:</code>
+<code>    return "no solution"</code></pre>
+
+</figure>
+<p>Although <em>checking</em> each specific candidate is pretty fast, the whole algorithm is exponential, because there are too many (exponent of) candidates.
+Turns out, it is possible to write &ldquo;check if solution fits&rdquo; part as a SAT formula!
+And, if you have a magic algorithm which solves SAT, you can use that to find a candidate solution which would work instead of enumerating all solutions!</p>
+<p>In other words, solving SAT removes &ldquo;search&rdquo; from &ldquo;search and check&rdquo;.</p>
+<p>That&rsquo;s more or less everything I wanted to say today, but let&rsquo;s make this a tiny bit more formal.</p>
+</section>
+<section id="Background">
+
+    <h2>
+    <a href="#Background">Background </a>
+    </h2>
+<p>We will be discussing algorithms and their runtime.
+Big-O notation is a standard instrument for describing performance of algorithms, as it erases small differences which depend on a particular implementation of the algorithm.
+Both 2N + 1000 and 100N are O(N), linear.</p>
+<p>In this post we will be even <em>less</em> precise.
+We will talk about <dfn>polynomial time</dfn> &mdash; an algorithm is polynomial if it is O(N<sup>k</sup>) for some k.
+For example, N<sup>100</sup> is polynomial, while 2<sup>N</sup> is not.</p>
+<p>We will also be thinking about Turing machines (<dfn>TM</dfn>s) as our implementation device.
+Programming algorithms directly on Turing machines is cumbersome, but TMs have two advantages for our use case:</p>
+<ul>
+<li>
+it&rsquo;s natural to define runtime of TM
+</li>
+<li>
+it&rsquo;s easy to simulate a TM as a part of some larger algorithm (an interpreter for a TM is a small program)
+</li>
+</ul>
+<p>Finally, we will only think about problems with binary answers (<dfn>decision problem</dfn>).
+&ldquo;Is there a solution to this formula?&rdquo; rather than &ldquo;what is the solution to this formula?&rdquo;.
+&ldquo;Is there a path in the graph of length at least N?&rdquo; rather than &ldquo;what is the longest path in this graph?&rdquo;.</p>
+</section>
+<section id="Definitions">
+
+    <h2>
+    <a href="#Definitions">Definitions </a>
+    </h2>
+<p>Intuitively, a problem is NP if it&rsquo;s easy to check that a solution is valid (even if <em>finding</em> the solution might be hard).
+This intuition doesn&rsquo;t exactly work for yes/no problems we are considering.
+To fix this, we will also provide a &ldquo;hint&rdquo; for the checker.
+For example, if the problem is &ldquo;is there a path of length N in a given graph?&rdquo; the hint will be a path.</p>
+<p>A decision problem is <dfn>NP</dfn>, if there&rsquo;s an algorithm that can verify a &ldquo;yes&rdquo; answer in polynomial time, given a suitable hint.</p>
+<p>That is, for every input where the answer is &ldquo;yes&rdquo; (and only for those inputs) there should be a hint that makes our verifying algorithm answer &ldquo;yes&rdquo;.</p>
+<p>Boolean satisfiability, or <dfn>SAT</dfn> is a decision problem where an input is a boolean formula like</p>
+
+<figure class="code-block">
+
+
+<pre><code>(A and B and !C) or</code>
+<code>(C and D) or</code>
+<code>!B</code></pre>
+
+</figure>
+<p>and the answer is &ldquo;yes&rdquo; if the formula evaluates to true for some variable assignment.</p>
+<p>It&rsquo;s easy to see that SAT is NP: the hint is variable assignment which satisfies the formula, and verifier evaluates the formula.</p>
+</section>
+<section id="Sketch-of-a-Proof">
+
+    <h2>
+    <a href="#Sketch-of-a-Proof">Sketch of a Proof </a>
+    </h2>
+<p>Turns out, there is the &ldquo;hardest&rdquo; problem in NP &mdash; solving just that single problem in polynomial time automatically solves every other NP problem in polynomial time (we call such problems <dfn>NP-complete</dfn>).
+Moreover, there&rsquo;s actually a bunch of such problems, and SAT is one of them.
+Let&rsquo;s see why!</p>
+<p>First, let&rsquo;s define a (somewhat artificial) problem which is trivially NP-complete.</p>
+<p>Let&rsquo;s start with this one: &ldquo;Given a Turing machine and an input for it of length N, will the machine output &ldquo;yes&rdquo; after N<sup>k</sup> steps?&rdquo;
+(here k is a fixed parameter; pedantically, I describe a family of problems, one for each k)</p>
+<p>This is <em>very</em> similar to a halting problem, but also much easier.
+We explicitly bound the runtime of the Turing machine by a polynomial, so we don&rsquo;t need to worry about &ldquo;looping forever&rdquo; case &mdash; that would be a &ldquo;no&rdquo; for us.
+The naive algorithm here works: we just run the given machine on a given input for a given amount of steps and look at the answer.</p>
+<p>Now, if we formulate the problem as &ldquo;<em>Is</em> there an input <strong><strong>I</strong></strong> for a given Turing machine <strong><strong>M</strong></strong> such that <strong><strong>M(I)</strong></strong> answers &ldquo;yes&rdquo; after N<sup>k</sup> steps?&rdquo; we get our NP-complete problem.
+It&rsquo;s trivially NP &mdash; the hint is the input that makes the machine answer &ldquo;yes&rdquo;, and the verifier just runs our TM with this input for N<sup>k</sup> steps.
+It can also be used to efficiently solve any other NP problem (e.g. SAT).
+Indeed, we can use the verifying TM as <strong><strong>M</strong></strong>, and that way find if there&rsquo;s any hint that makes it answer &ldquo;yes&rdquo;.</p>
+<p>This is a bit circular and hard to wrap ones head around, but, at the same time, trivial.
+We essentially just carefully stare at the definition of an NP problem, specifically produce an algorithm that can solve any NP problem by directly using the definition, and notice that the resulting algorithm is also NP.
+Now there&rsquo;s no surprise that there exists the hardest NP problem &mdash; we essentially <em>defined</em> NP such that this is the case.</p>
+<p>What is still a bit mysterious is why non-weird problems like SAT also turn out to be NP-complete?
+This is because SAT is powerful enough to encode a Turing machine!</p>
+<p><em>First</em>, note that we can encode a state of a Turing machine as a set of boolean variables.
+We&rsquo;ll need a boolean variable T<sub>i</sub> for each position on a tape.
+The tape is in general infinite, but all our Turing machines run for polynomial (finite) time, so they use only a finite amount of cells, and it&rsquo;s enough to create variables only for those cells.
+Position of the head can also be described by a set of booleans variables.
+For example, we can have a P<sub>i</sub> &ldquo;is the head at a cell <code>i</code>&rdquo; variable for each cell.
+Similarly, we can encode the finite number of states our machine can be in as a set of S<sub>i</sub> variables (is the machine in state <code>i</code>?).</p>
+<p><em>Second</em>, we can write a set of boolean equations which describe a single transition of our Turing machine.
+For example  the value of cell i at the second step T2<sub>i</sub> will depend on its value on the previous step T1<sub>i</sub>, whether the head was at <code>i</code> (P1<sub>i</sub>) and the rules of our specific states.
+For example, if our machine flips bits in state <code>0</code> and keeps them in state <code>1</code>, then the formula we get for each cell is</p>
+
+<figure class="code-block">
+
+
+<pre><code>T2_i &lt;=&gt;</code>
+<code>  (!P1_i and T1_i) # head is not on our cell, it can't change</code>
+<code>or (P1_i and (</code>
+<code>    S1_0 and !T1_i # flip case</code>
+<code>or  S1_1 and T1_i  # keep case</code>
+<code>))</code></pre>
+
+</figure>
+<p>We can write similar formulas for changes of P and S families of variables.</p>
+<p><em>Third</em>, after we wrote the transition formula for a single step, we can stack several such formulas on top of each other to get a formula for N steps.</p>
+<p>Now let&rsquo;s come back to our universal problem: &ldquo;is there an input which makes a given Turing machine answer &ldquo;yes&rdquo; in N<sup>k</sup> steps?&rdquo;.
+At this point, it&rsquo;s clear that we can replace a &ldquo;Turing machine with N<sup>k</sup> steps&rdquo; with our transition formula duplicated N<sup>k</sup> times.
+So, the question of existence of an input for a Turing machine reduces to the question of existence of a solution to a (big, but still polynomial) SAT formula.</p>
+<p>And this concludes the sketch!</p>
+</section>
+<section id="Summary-Again">
+
+    <h2>
+    <a href="#Summary-Again">Summary, Again </a>
+    </h2>
+<p>SAT is hard, because it allows encoding Turing machine transitions.
+We can&rsquo;t encode loops in SAT, but we can encode &ldquo;N steps of a Turing machine&rdquo; by repeating the same formula N times with small variations.
+So, if we know that a particular Turing machine runs in polynomial time, we <em>can</em> encode it by a polynomially-sized formula.
+(see also <a href="https://mochiro.moe/posts/09-meson-raytracer/">pure meson ray-tracer</a> for a significantly more practical application of a similar idea).</p>
+<p>And that means that every problem that can be solved by a brute-force search over all solutions can be reduced to a SAT instance, by encoding the body of the search loop as a SAT formula!</p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Three-State Stability</title>
+<link href="https://matklad.github.io/2023/02/16/three-state-stability.html" rel="alternate" type="text/html" title="Three-State Stability" />
+<published>2023-02-16T00:00:00+00:00</published>
+<updated>2023-02-16T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/02/16/three-state-stability</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[Usually, when discussing stability of the APIs (in a broad sense; databases and programming languages are also APIs), only two states are mentioned:]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/02/16/three-state-stability.html"><![CDATA[
+    <h1>
+    <a href="#Three-State-Stability">Three-State Stability <time datetime="2023-02-16">Feb 16, 2023</time></a>
+    </h1>
+<p>Usually, when discussing stability of the APIs (in a broad sense; databases and programming languages are also APIs), only two states are mentioned:</p>
+<ul>
+<li>
+an API is stable if there&rsquo;s a promise that all future changes would be backwards compatible
+</li>
+<li>
+otherwise, it is unstable
+</li>
+</ul>
+<p>This is reflected in, e.g, SemVer: before 1.0, anything goes, after 1.0 you only allow to break API if you bump major version.</p>
+<p>I think the <em>actual</em> situation in the real world is a bit more nuanced than that.
+In addition to clearly stable or clearly unstable, there&rsquo;s often a poorly defined third category.
+It often manifests as either:</p>
+<ul>
+<li>
+some technically non-stable version of the project (e.g., <code>0.2</code>) becoming widely used and de facto stable
+</li>
+<li>
+some minor but technically breaking quietly slipping in shortly after 1.0
+</li>
+</ul>
+<p>Here&rsquo;s what I think happens over a lifetime of a typical API:</p>
+<p>In the first phase, the API is actively evolving.
+There is a promise of anti-stability &mdash; there&rsquo;s constant change and a lot of experimentation.
+Almost no one is using the project seriously:</p>
+<ul>
+<li>
+the API is simply incomplete, there are large gaps in functionality
+</li>
+<li>
+chasing upstream requires continuous, large effort
+</li>
+<li>
+there&rsquo;s no certainty that the project will, in fact, ship a stable version, rather than die
+</li>
+</ul>
+<p>In the second phase, the API is <em>mostly</em> settled.
+It does everything it needs to do, and the shape feels mostly right.
+Transition to this state happens when the API maintainers feel like they nailed down everything.
+However, no wide deployment had happened, so there might still be minor, but backwards incompatible adjustments wanting to be made.
+It makes sense to use the API for all <em>active</em> projects (though it costs you an innovation token).
+The thing basically works, you <em>might</em> need to adjust your code from time to time, occasionally an adjustment is not trivial, but the overall expected effort is low.
+The API is fully production ready, and has everything except stability.
+If you write a program on top of the API today, and try to run it ten years later, it will fail.
+But if you are making your own releases a couple of times a year, you should be fine.</p>
+<p>In the third phase, the API is fully stable, and no backwards-incompatible changes are expected.
+Otherwise, it is identical to the second phase.
+Transition to this phase happens after:</p>
+<ul>
+<li>
+early adopters empirically stop uncovering deficiencies in the API
+</li>
+<li>
+API maintainers make a commitment to maintain stability.
+</li>
+</ul>
+<p>In other words, it is not unstable -&gt; stable, it is rather:</p>
+<ul>
+<li>
+experimental (unstable, not fit for production)
+</li>
+<li>
+production ready (still unstable, but you can budget-in a bounded amount of upgrade work)
+</li>
+<li>
+stable (no maintenance work is required)
+</li>
+</ul>
+<p>We don&rsquo;t have great, catchy terms to describe the second bullet, so it gets lumped together with the first or the last one.</p>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">&lt;3 Deno</title>
+<link href="https://matklad.github.io/2023/02/12/a-love-letter-to-deno.html" rel="alternate" type="text/html" title="&lt;3 Deno" />
+<published>2023-02-12T00:00:00+00:00</published>
+<updated>2023-02-12T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/02/12/a-love-letter-to-deno</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[Deno is a relatively new JavaScript runtime.
+I find quite interesting and aesthetically appealing, in-line with the recent trend to rein in the worse-is-better law of software evolution.
+This post explains why.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/02/12/a-love-letter-to-deno.html"><![CDATA[
+    <h1>
+    <a href="#3-Deno">&lt;3 Deno <time datetime="2023-02-12">Feb 12, 2023</time></a>
+    </h1>
+<p><a href="https://deno.land/manual@v1.30.3/introduction">Deno</a> is a relatively new JavaScript runtime.
+I find quite interesting and aesthetically appealing, in-line with the recent trend to rein in the worse-is-better law of software evolution.
+This post explains why.</p>
+<p>The way I see it, the primary goal of Deno is to simplify development of software, relative to the status quo.
+Simplifying means removing the accidental complexity.
+To me, a big source of accidental complexity in today&rsquo;s software are implicit dependencies.
+Software is built of many components, and while some components are relatively well-defined (Linux syscall interface, amd64 ISA), others are much less so.
+Example: upgrading OpenSSL for your Rust project from 1.1.1 to 3.0.0 works on your machine, but breaks on CI, because 3.0.0 now needs some new perl module, which is <em>expected</em> to usually be there together with the perl installation, but that is not universally so.
+One way to solve these kinds of problems is by putting <del>an abstraction boundary</del> a docker container around them.
+But a different approach is to very carefully avoid creating the issues.
+Deno, in the general sense, picks this second noble hard path.</p>
+<p>One of the first problems in this area is bootstrapping.
+In general, you can paper over quite a bit of complexity by writing some custom script to do all the grunt work.
+But how do you run it?</p>
+<p>One answer is to use a shell script, as the shell is already installed.
+Which shell? Bash, sh, powershell?
+Probably POSIX sh is a sane choice, Windows users can just run <del>a docker container</del> a Linux in their subsystem.
+You&rsquo;ll also want to install shellcheck to make sure you don&rsquo;t accidentally use bashisms.
+At some point your script grows too large, and you rewrite it in Python.
+You now have to install Python, I&rsquo;ve heard it&rsquo;s much easier these days on Windows.
+Of course, you&rsquo;ll run that inside <del>a docker container</del> a virtual environment.
+And you would be careful to use <code>python3 -m pip</code> rather than <code>pip3</code> to make sure you use the right thing.</p>
+<p>Although scripting and plumbing should be a way to combat complexity, just getting to the point where every contributor to your software can run scripts requires <del>a docker container</del> a great deal of futzing with the environment!</p>
+<p>Deno doesn&rsquo;t solve the problem of just being already there on every imaginable machine.
+However, it strives very hard to not create additional problems once you get the <code>deno</code> binary onto the machine.
+Some manifestations of that:</p>
+<p>Deno comes with a code formatter (<code>deno fmt</code>) and an LSP server (<code>deno lsp</code>) out of the box.
+The high order bit here is not that these are high-value features which drive productivity (though that is so), but that you don&rsquo;t need to pull extra deps to get these features.
+Similarly, Deno is a TypeScript runtime &mdash; there&rsquo;s no transpilation step involved, you just <code>deno main.ts</code>.</p>
+<p>Deno does not rely on system&rsquo;s shell.
+Most scripting environments, including node, python, and ruby, make a grave mistake of adding an API to spawn a process intermediated by the shell.
+This is slow, insecure, and brittle (<em>which</em> shell was that, again?).
+I have a  <a href="https://matklad.github.io/2021/07/30/shell-injection.html">longer post</a> about the issue.
+Deno doesn&rsquo;t have this vulnerable API.
+Not that &ldquo;not having an API&rdquo; is a particularly challenging technical achievement, but it <em>is</em> better than the current default.</p>
+<p>Deno has a correctly designed tasks system.
+Whenever you do a non-trivial software project, there inevitably comes a point where you need to write some software to orchestrate your software.
+Accidental complexity creeps in the form of a <code>Makefile</code> (<em>which</em> <code>make</code> is that?) or a <code>./scripts/*.sh</code> directory.
+Node (as far as I know) pioneered a great idea to treat these as a first-class concern of the project, by including a <code>scripts</code> field in the <code>package.json</code>.
+It then botched the execution by running the scripts through system&rsquo;s shell, which downgrades it to <code>./scripts</code> directory with more indirection.
+In contrast, Deno runs the scripts in <a href="https://github.com/denoland/deno_task_shell"><code>deno_task_shell</code></a> &mdash; a purpose-built small cross-platform shell.
+You no longer need to worry that <code>rm</code> might behave differently depending on <code>which rm</code> it is, because it&rsquo;s a shell&rsquo;s built-in now.</p>
+<p>These are all engineering nice-to-haves.
+They don&rsquo;t necessary matter as much in isolation, but together they point at project values which align very well with my own ones.
+But there are a couple of innovative, bigger features as well.</p>
+<p>The first big feature is the permissions system.
+When you run a Deno program, you need to specify explicitly which OS resources it can access.
+Pinging <code>google.com</code> would require an explicit opt-in.
+You can safely run</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-title function_">$</span> deno run https://shady.website.eu/caesar-cipher.ts &lt; in.txt &gt; out.txt</code></pre>
+
+</figure>
+<p>and be sure that this won&rsquo;t steal your secrets.
+Of course, it can still burn the CPU indefinitely or fill <code>out.txt</code> with garbage, but it won&rsquo;t be able to read anything beyond explicitly passed input.
+For many, if not most, scripting tasks this is a nice extra protection from supply chain attacks.</p>
+<p>The second big feature is Deno&rsquo;s interesting, minimal, while still practical, take on dependency management.
+First, it goes without saying that there are no global dependencies.
+Everything is scoped to the current project.
+Naturally, there are also lockfiles with checksums.</p>
+<p>However, there&rsquo;s no package registry or even a separate package manager.
+In Deno, a dependency is always a URL.
+The runtime itself understands URLs, downloads their contents and loads the resulting TypeScript or JavaScript.
+Surprisingly, it feels like this is enough to express various dependency patterns.
+For example, if you need a centralized registry, like <a href="https://deno.land/x" class="url">https://deno.land/x</a>, you can use URLs pointing to that!
+URLs can also express semver, with <code>foo@1</code> redirecting to <code>foo@1.2.3</code>.
+<a href="https://deno.land/manual@v1.30.3/basics/import_maps">Import maps</a> are a standard, flexible way to remap dependencies, for when you need to tweak something deep in the tree.
+Crucially, in addition to lockfiles Deno comes with a built in <code>deno vendor</code> command, which fetches all of the dependencies of the current project and puts them into a subfolder, making production deployments immune to dependencies&rsquo; hosting failures.</p>
+<p>Deno&rsquo;s approach to built-in APIs beautifully bootstraps from its url-based dependency management.
+First, Deno provides a set of runtime APIs.
+These APIs are absolutely stable, follow existing standards (eg, <code>fetch</code> for doing networking), and play the role of providing cross-platform interface for the underlying OS.
+Then there&rsquo;s the standard library.
+There&rsquo;s an ambition to provide a comprehensive batteries included standard library, which is vetted by core developers, a-la Go.
+At the same time, <em>huge</em> stdlib requires a lot of work over many years.
+So, as a companion to a stable 1.30.3 runtime APIs, which is a part of <code>deno</code> binary, there&rsquo;s 0.177.0 version of stdlib, which is downloaded just like any other dependency.
+I am fairly certain that in time this will culminate in actually stable, comprehensive, and high quality stdlib.</p>
+<p>All these together mean that you can be sure that, if you got <code>deno --version</code> working, then <code>deno run your-script.ts</code> will always work, as the surface area for things to go wrong due to differences in the environment is drastically cut.</p>
+<p>The only big drawback of Deno is the language &mdash; all this runtime awesomeness is tied to TypeScript.
+JavaScript is a curious beast &mdash; post ES6, it is actually quite pleasant to use, and has some really good parts, like injection-proof template literal semantics.
+But all the old <a href="https://www.destroyallsoftware.com/talks/wat">WATs</a> like</p>
+
+<figure class="code-block">
+
+
+<pre><code>[<span class="hl-string">&quot;10&quot;</span>, <span class="hl-string">&quot;10&quot;</span>, <span class="hl-string">&quot;10&quot;</span>].<span class="hl-title function_">map</span>(<span class="hl-built_in">parseInt</span>)</code></pre>
+
+</figure>
+<p>are still there.
+TypeScript does an admirable job with typing JavaScript, as it exists in the wild, but the resulting type system is not simple.
+It seems that, linguistically, something substantially better than TypeScript is possible in theory.
+But among the actually existing languages, TypeScript seems like a solid choice.</p>
+<p>To sum up, historically the domain of &ldquo;scripting&rdquo; and &ldquo;glue code&rdquo; was plagued by the problem of accidentally supergluing oneself to a particular UNIX flavor at hand.
+Deno finally seems like a technology that tries to solve this issue of implicit dependencies by not having the said dependencies <del>instead of putting everything in a docker container</del>.</p>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">How a Zig IDE Could Work</title>
+<link href="https://matklad.github.io/2023/02/10/how-a-zig-ide-could-work.html" rel="alternate" type="text/html" title="How a Zig IDE Could Work" />
+<published>2023-02-10T00:00:00+00:00</published>
+<updated>2023-02-10T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/02/10/how-a-zig-ide-could-work</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[Zig is a very interesting language from an IDE point of view.
+Some aspects of it are friendly to IDEs, like a very minimal and simple-to-parse syntax
+(Zig can even be correctly lexed line-by-line, very cool!),
+the absence of syntactic macros, and ability to do a great deal of semantic analysis on a file-by-file basis, in parallel.
+On the other hand, comptime.
+I accidentally spent some time yesterday thinking about how to build an IDE for that, this post is a result.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/02/10/how-a-zig-ide-could-work.html"><![CDATA[
+    <h1>
+    <a href="#How-a-Zig-IDE-Could-Work">How a Zig IDE Could Work <time datetime="2023-02-10">Feb 10, 2023</time></a>
+    </h1>
+<p>Zig is a very interesting language from an IDE point of view.
+Some aspects of it are friendly to IDEs, like a very minimal and simple-to-parse syntax
+(Zig can even be <em>correctly</em> lexed line-by-line, very cool!),
+the absence of syntactic macros, and ability to do a great deal of semantic analysis on a file-by-file basis, in parallel.
+On the other hand, <code>comptime</code>.
+I accidentally spent some time yesterday thinking about how to build an IDE for that, this post is a result.</p>
+<section id="How-Does-the-Zig-Compiler-Work">
+
+    <h2>
+    <a href="#How-Does-the-Zig-Compiler-Work">How Does the Zig Compiler Work? </a>
+    </h2>
+<p>It&rsquo;s useful to discuss a bit how the compiler works today.
+For something more thorough, refer to this excellent series of posts: <a href="https://mitchellh.com/zig" class="url">https://mitchellh.com/zig</a>.</p>
+<p>First, each Zig file is parsed into an AST.
+Delightfully, parsing doesn&rsquo;t require any context whatsoever, it&rsquo;s a pure <code>[]const u8 -&gt; Ast</code> function, and the resulting Ast is just a piece of data.</p>
+<p>After parsing, the Ast is converted to an intermediate representation, Zir.
+This is where Zig diverges a bit from more typical statically compiled languages.
+Zir actually resembles something like Python&rsquo;s bytecode &mdash; an intermediate representation that an interpreter for a dynamically-typed language would use.
+That&rsquo;s because it <em>is</em> an interpreter&rsquo;s IR &mdash; the next stage would use Zir to evaluate comptime.</p>
+<p>Let&rsquo;s look at an example:</p>
+
+<figure class="code-block">
+
+
+<pre><code>fn generic_add(comptime T: type, lhs: T, rhs: T) T {</code>
+<code>  return lhs + rhs;</code>
+<code>}</code></pre>
+
+</figure>
+<p>Here, the Zir for <code>generic_add</code> would encode addition as a typeless operation, because we don&rsquo;t know types at this point.
+In particular, <code>T</code> can be whatever.
+When the compiler would <em>instantiate</em> <code>generic_add</code> with different <code>T</code>s, like <code>generic_add(u32, ...)</code>, <code>generic_add(f64, ...)</code>, it will re-use the same Zir for different instantiations.
+That&rsquo;s the two purposes of Zir: to directly evaluate code at compile time, and to serve as a template for monomorphisation.</p>
+<p>The next stage is where the magic happens &mdash; the compiler partially evaluates dynamically typed Zir to convert it into a fairly standard statically typed IR.
+The process starts at the <code>main</code> function.
+The compiler more or less tries to evaluate the Zir.
+If it sees something like <code>90 + 2</code>, it directly evaluates that to <code>92</code>.
+For something which can&rsquo;t be evaluated at compile time, like <code>a + 2</code> where <code>a</code> is a runtime variable, the compiler generates typed IR for addition (as, at this point, we already know the type of <code>a</code>).</p>
+<p>When the compiler sees something like</p>
+
+<figure class="code-block">
+
+
+<pre><code>const T = u8;</code>
+<code>const x = generic_add(T, a, b);</code></pre>
+
+</figure>
+<p>the compiler monomorphises the generic call.
+It checks that all comptime arguments (<code>T</code>) are fully evaluated, and starts partial evaluation of the called function, with comptime parameters fixed to particular values (this of course is memoized).</p>
+<p>The whole process is lazy &mdash; only things transitively used from main are analyzed.
+Compiler won&rsquo;t complain about something like</p>
+
+<figure class="code-block">
+
+
+<pre><code>fn unused() void {</code>
+<code>    1 + "";</code>
+<code>}</code></pre>
+
+</figure>
+<p>This looks perfectly fine at the Zir level, and the compiler will not move beyond Zir unless the function is actually called somewhere.</p>
+</section>
+<section id="And-an-IDE">
+
+    <h2>
+    <a href="#And-an-IDE">And an IDE? </a>
+    </h2>
+<p>IDE adds several dimensions to the compiler:</p>
+<ul>
+<li>
+works with incomplete and incorrect code
+</li>
+<li>
+works with code which rapidly changes over time
+</li>
+<li>
+gives results immediately, there is no edit/compile cycle
+</li>
+<li>
+provides source to source transformations
+</li>
+</ul>
+<p>The hard bit is the combination of rapid changes and immediate results.
+This is usually achieved using some smart, language-specific combination of</p>
+<ul>
+<li>
+<p>Incrementality: although changes are frequent and plentiful, they are local, and it is often possible to re-use large chunks of previous analysis.</p>
+</li>
+<li>
+<p>Laziness: unlike a compiler, an IDE does not need full analysis results for the entirety of the codebase.
+Usually, analysis of the function which is currently being edited is the only time-critical part, everything else can be done asynchronously, later.</p>
+</li>
+</ul>
+<p>This post gives an overview of some specific fruitful combinations of the two ideas:</p>
+<p><a href="https://rust-analyzer.github.io/blog/2020/07/20/three-architectures-for-responsive-ide.html" class="url">https://rust-analyzer.github.io/blog/2020/07/20/three-architectures-for-responsive-ide.html</a></p>
+<p>How can we apply the ideas to Zig?
+Let&rsquo;s use this as our running example:</p>
+
+<figure class="code-block">
+
+
+<pre><code>fn guinea_pig(comptime T: type, foo: Foo) void {</code>
+<code>    foo.&lt;complete here&gt;;</code>
+<code></code>
+<code>    helper(T).&lt;here&gt;;</code>
+<code></code>
+<code>    var t: T = undefined;</code>
+<code>    t.&lt;and here&gt;;</code>
+<code>}</code></pre>
+
+</figure>
+<p>There are two, separate interesting questions to ask here:</p>
+<ul>
+<li>
+what result do we even want here?
+</li>
+<li>
+how to achieve that given strict performance requirements?
+</li>
+</ul>
+</section>
+<section id="Just-Compile-Everything">
+
+    <h2>
+    <a href="#Just-Compile-Everything">Just Compile Everything </a>
+    </h2>
+<p>It&rsquo;s useful to start with a pedantically correct approach.
+Let&rsquo;s run our usual compilation (recursively monomorphising called functions starting from the <code>main</code>).
+The result would contain a bunch of different monomorphisations of <code>guinea_pig</code>, for different values of <code>T</code>.
+For each <em>specific</em> monomorphisation it&rsquo;s now clear what is the correct answer.
+For the unspecialized case as written in the source code, the IDE can now show something reasonable by combining partial results from each monomorphisation.</p>
+<p>There are several issues with this approach.</p>
+<p><em>First</em>, collecting the <em>full</em> set of monomorphisations is not well-defined in the presence of conditional compilation.
+Even if you run the &ldquo;full&rdquo; compilation starting from main, today compiler assumes some particular environment (eg, Windows or Linux), which doesn&rsquo;t give you a full picture.
+There&rsquo;s a fascinating issue about multibuilds &mdash; making the compiler process all combinations of conditional compilation flags at the same time: <a href="https://github.com/ziglang/zig/issues/3028">zig#3028</a>.
+With my IDE writer hat on, I really hope it gets in, as it will move IDE support from inherently heuristic territory, to something where, in principle, there&rsquo;s a correct result (even if might not be particularly easy to compute).</p>
+<p>The <em>second</em> problem is that this probably is going to be much too slow.
+If you think about IDE support for the first time, a very tantalizing idea is to try to lean just into incremental compilation.
+Specifically, you can imagine a compiler that maintains fully type-checked and resolved view of the code at all times.
+If a user edits something, the compiler just incrementally changes what needs to be changed.
+So the trick for IDE-grade interactive performance is just to implement sufficiently advanced incremental compilation.</p>
+<p>The problem with sufficiently incremental compiler is that even the perfect incrementality, which does the minimal required amount of work, will be slow in a non-insignificant amount of cases.
+The nature of code is that a small change to the source in a single place might lead to a large change to resolved types all over the project.
+For examples, changing the name of some popular type invalidates all the code that uses this type.
+That&rsquo;s the fundamental reason why IDE try hard to maintain an ability to <em>not</em> analyze everything.</p>
+<p>On the other hand, at the end of the day you&rsquo;ll have to do this work at least by the time you run the tests.
+And Zig&rsquo;s compiler is written from the ground up to be very incremental and very fast, so perhaps this will be good enough?
+My current gut feeling is that the answer is no &mdash; even if you <em>can</em> re-analyze everything in, say, 100ms, that&rsquo;ll still require burning the battery for essentially useless work.
+Usually, there&rsquo;s a lot more atomic small edits for a single test run.</p>
+<p>The <em>third</em> problem with the approach of collection all monomorphisations is that it simply does not work if the function isn&rsquo;t actually called, yet.
+Which is common in incomplete code that is being written, exactly the use-case where the IDE is most useful!</p>
+</section>
+<section id="Compile-Only-What-We-Need">
+
+    <h2>
+    <a href="#Compile-Only-What-We-Need">Compile Only What We Need </a>
+    </h2>
+<p>Thinking about the &ldquo;full&rdquo; approach more, it feels like it could be, at least in theory, optimized somewhat.
+Recall that in this approach we have a graph of function instantiations, which starts at the root (<code>main</code>), and contains various monomorphisations of <code>guinea_pig</code> on paths reachable from the root.</p>
+<p>It is clear we actually don&rsquo;t need the full graph to answer queries about instantiations of <code>guinea_pig</code>.
+For example, if we have something like</p>
+
+<figure class="code-block">
+
+
+<pre><code>fn helper() i32 {</code>
+<code>    ...</code>
+<code>}</code></pre>
+
+</figure>
+<p>and the <code>helper</code> does not (transitively) call <code>guinea_pig</code>, we can avoid looking into its body, as the signature is enough to analyze everything else.</p>
+<p>More precisely, given the graph of monomorphisations, we can select minimal subgraph which includes all paths from <code>main</code> to <code>guinea_pig</code> instantiations, as well as all the functions whose bodies we need to process to understand their signatures.
+My intuition is that the size of that subgraph is going to be much smaller than the whole thing, and, in principle, an algorithm which would analyze only that subgraph should be speedy enough in practice.</p>
+<p>The problem though is that, as far as I know, it&rsquo;s not possible to understand what belongs to the subgraph without analysing the whole thing!
+In particular, using compile-time reflection our <code>guinea_pig</code> can be called through something like <code>comptime "guinea" ++ "_pig"</code>.
+It&rsquo;s impossible to infer the call graph just from Zir.</p>
+<p>And of course this does not help the case where the function isn&rsquo;t called at all.</p>
+</section>
+<section id="Abstract-Comptime-Interpretation">
+
+    <h2>
+    <a href="#Abstract-Comptime-Interpretation">Abstract Comptime Interpretation </a>
+    </h2>
+<p>It is possible to approach</p>
+
+<figure class="code-block">
+
+
+<pre><code>fn guinea_pig(comptime T: type, foo: Foo) void {</code>
+<code>    foo.&lt;complete here&gt;;</code>
+<code></code>
+<code>    helper(T).&lt;here&gt;;</code>
+<code></code>
+<code>    var t: T = undefined;</code>
+<code>    t.&lt;and here&gt;;</code>
+<code>}</code></pre>
+
+</figure>
+<p>from a different direction.
+What if we just treat this function as the root of our graph?
+We can&rsquo;d do that exactly, because it has some comptime parameters.
+But we <em>can</em> say that we have some opaque values for the parameters: <code>T = opaquevalue</code>.
+Of course, we won&rsquo;t be able to fully evaluate everything and things like <code>if (T == int)</code> would probably need to propagate opaqueness.
+At the same time, something like the result of <code>BoundedArray(opaque)</code> would still be pretty useful for an IDE.</p>
+<p>I am wondering if there&rsquo;s even perhaps some compilation-time savings in this approach?
+My understanding (which might be very wrong!) is that if a generic function contains something like <code>90 + 2</code>, this expression would be comptime-evaluated anew for every instantiation.
+In theory, what we could do is to partially evaluate this function substituting opaque values for comptime parameters, and then, for any specific instantiation, we can use the result of this partial evaluation as a template.
+Not sure what that would mean precisely though: it definitely would be more complicated than just substituting <code>T</code>s in the result.</p>
+</section>
+<section id="What-is-to-Be-Done">
+
+    <h2>
+    <a href="#What-is-to-Be-Done">What is to Be Done? </a>
+    </h2>
+<p>Ast and Zir infra is good.
+It is per-file, so it naturally just works in an IDE.</p>
+<p><a href="https://github.com/ziglang/zig/issues/3028">Multibuilds</a> are important.
+I am somewhat skeptical that they&rsquo;ll actually fly, and it&rsquo;s not a complete game over if they don&rsquo;t
+(Rust has the same problem with conditional compilation, and it does create fundamental problems for both the users and authors of IDEs, but the end result is still pretty useful).
+Still, if Zig does ship multibuilds, that&rsquo;d be awesome.</p>
+<p>Given the unused function problem, I think it&rsquo;s impossible to avoid at least some amount of abstract interpretation, so <code>Sema</code> has to learn to deal with opaque values.</p>
+<p>With abstract interpretation machinery in place, it can be used as a first, responsive layer of IDE support.</p>
+<p>Computing the full set of monomoprisations in background can be used to augment these limited synchronous features with precise results asynchronously.
+Though, this might be tough to express in existing editor UIs.
+Eg, the goto definition result is now an asynchronous stream of values.</p>
+<p>Discussion on <a href="https://old.reddit.com/r/Zig/comments/10ysssh/blog_post_how_a_zig_ide_could_work/">/r/zig</a>.</p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Rust's Ugly Syntax</title>
+<link href="https://matklad.github.io/2023/01/26/rusts-ugly-syntax.html" rel="alternate" type="text/html" title="Rust's Ugly Syntax" />
+<published>2023-01-26T00:00:00+00:00</published>
+<updated>2023-01-26T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/01/26/rusts-ugly-syntax</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[People complain about Rust syntax.
+I think that most of the time when people think they have an issue with Rust's syntax, they actually object to Rust's semantics.
+In this slightly whimsical post, I'll try to disentangle the two.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/01/26/rusts-ugly-syntax.html"><![CDATA[
+    <h1>
+    <a href="#Rust-s-Ugly-Syntax">Rust&rsquo;s Ugly Syntax <time datetime="2023-01-26">Jan 26, 2023</time></a>
+    </h1>
+<p>People complain about Rust syntax.
+I think that most of the time when people think they have an issue with Rust&rsquo;s syntax, they actually object to Rust&rsquo;s semantics.
+In this slightly whimsical post, I&rsquo;ll try to disentangle the two.</p>
+<p>Let&rsquo;s start with an example of an ugly Rust syntax:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">read</span>&lt;P: <span class="hl-built_in">AsRef</span>&lt;Path&gt;&gt;(path: P) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;&gt; {</code>
+<code>  <span class="hl-keyword">fn</span> <span class="hl-title function_">inner</span>(path: &amp;Path) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;&gt; {</code>
+<code>    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">file</span> = File::<span class="hl-title function_ invoke__">open</span>(path)?;</code>
+<code>    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">bytes</span> = <span class="hl-type">Vec</span>::<span class="hl-title function_ invoke__">new</span>();</code>
+<code>    file.<span class="hl-title function_ invoke__">read_to_end</span>(&amp;<span class="hl-keyword">mut</span> bytes)?;</code>
+<code>    <span class="hl-title function_ invoke__">Ok</span>(bytes)</code>
+<code>  }</code>
+<code>  <span class="hl-title function_ invoke__">inner</span>(path.<span class="hl-title function_ invoke__">as_ref</span>())</code>
+<code>}</code></pre>
+
+</figure>
+<p>This function reads contents of a given binary file.
+This is lifted straight from the standard library, so it is very much not a strawman example.
+And, at least to me, it&rsquo;s definitely not a pretty one!</p>
+<p>Let&rsquo;s try to imagine what this same function would look like if Rust had a better syntax.
+Any resemblance to real programming languages, living or dead, is purely coincidental!</p>
+<p>Let&rsquo;s start with Rs++:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">template</span>&lt;std::HasConstReference&lt;std::Path&gt; P&gt;</code>
+<code>std::io::outcome&lt;std::vector&lt;<span class="hl-type">uint8_t</span>&gt;&gt;</code>
+<code>std::<span class="hl-built_in">read</span>(P path) {</code>
+<code>    <span class="hl-keyword">return</span> <span class="hl-built_in">read_</span>(path.<span class="hl-built_in">as_reference</span>());</code>
+<code>}</code>
+<code></code>
+<code><span class="hl-type">static</span></code>
+<code>std::io::outcome&lt;std::vector&lt;<span class="hl-type">uint8_t</span>&gt;&gt;</code>
+<code><span class="hl-built_in">read_</span>(&amp;<span class="hl-keyword">auto</span> <span class="hl-type">const</span> std::Path path) {</code>
+<code>    <span class="hl-keyword">auto</span> file = <span class="hl-keyword">try</span> std::File::<span class="hl-built_in">open</span>(path);</code>
+<code>    std::vector bytes;</code>
+<code>    <span class="hl-keyword">try</span> file.<span class="hl-built_in">read_to_end</span>(&amp;bytes);</code>
+<code>    <span class="hl-keyword">return</span> <span class="hl-built_in">okey</span>(bytes);</code>
+<code>}</code></pre>
+
+</figure>
+<p>A Rhodes variant:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">public</span> io.Result&lt;ArrayList&lt;Byte&gt;&gt; read&lt;P <span class="hl-keyword">extends</span> <span class="hl-title class_">ReferencingFinal</span>&lt;Path&gt;&gt;(</code>
+<code>        P path) {</code>
+<code>    <span class="hl-keyword">return</span> myRead(path.get_final_reference());</code>
+<code>}</code>
+<code></code>
+<code><span class="hl-keyword">private</span> io.Result&lt;ArrayList&lt;Byte&gt;&gt; <span class="hl-title function_">myRead</span><span class="hl-params">(</span></code>
+<code><span class="hl-params">        <span class="hl-keyword">final</span> reference lifetime <span class="hl-keyword">var</span> Path path)</span> {</code>
+<code>    <span class="hl-type">var</span> <span class="hl-variable">file</span> <span class="hl-operator">=</span> <span class="hl-keyword">try</span> File.open(path);</code>
+<code>    ArrayList&lt;Byte&gt; bytes = ArrayList.new();</code>
+<code>    <span class="hl-keyword">try</span> file.readToEnd(borrow bytes);</code>
+<code>    <span class="hl-keyword">return</span> Success(bytes);</code>
+<code>}</code></pre>
+
+</figure>
+<p>Typical RhodesScript:</p>
+
+<figure class="code-block">
+
+
+<pre><code>public <span class="hl-keyword">function</span> read&lt;P <span class="hl-keyword">extends</span> <span class="hl-title class_">IncludingRef</span>&lt;<span class="hl-title class_">Path</span>&gt;&gt;(</code>
+<code>    <span class="hl-attr">path</span>: P,</code>
+<code>): io.<span class="hl-property">Result</span>&lt;<span class="hl-title class_">Array</span>&lt;byte&gt;&gt; {</code>
+<code>    <span class="hl-keyword">return</span> <span class="hl-title function_">myRead</span>(path.<span class="hl-title function_">included_ref</span>());</code>
+<code>}</code>
+<code></code>
+<code>private <span class="hl-keyword">function</span> <span class="hl-title function_">myRead</span>(<span class="hl-params"></span></code>
+<code><span class="hl-params">    path: &amp;<span class="hl-keyword">const</span> Path,</span></code>
+<code><span class="hl-params"></span>): io.<span class="hl-property">Result</span>&lt;<span class="hl-title class_">Array</span>&lt;byte&gt;&gt; {</code>
+<code>    <span class="hl-keyword">let</span> file = <span class="hl-keyword">try</span> <span class="hl-title class_">File</span>.<span class="hl-title function_">open</span>(path);</code>
+<code>    <span class="hl-title class_">Array</span>&lt;byte&gt; bytes = <span class="hl-title class_">Array</span>.<span class="hl-title function_">new</span>()</code>
+<code>    <span class="hl-keyword">try</span> file.<span class="hl-title function_">readToEnd</span>(&amp;bytes)</code>
+<code>    <span class="hl-keyword">return</span> <span class="hl-title class_">Ok</span>(bytes);</code>
+<code>}</code></pre>
+
+</figure>
+<p>Rattlesnake:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">def</span> <span class="hl-title function_">read</span>[P: Refing[Path]](path: P): io.Result[<span class="hl-type">List</span>[byte]]:</code>
+<code>    <span class="hl-keyword">def</span> <span class="hl-title function_">inner</span>(<span class="hl-params">path: @Path</span>): io.Result[<span class="hl-type">List</span>[byte]]:</code>
+<code>        file := <span class="hl-keyword">try</span> File.<span class="hl-built_in">open</span>(path)</code>
+<code>        <span class="hl-built_in">bytes</span> := <span class="hl-type">List</span>.new()</code>
+<code>        <span class="hl-keyword">try</span> file.read_to_end(@: <span class="hl-built_in">bytes</span>)</code>
+<code>        <span class="hl-keyword">return</span> Ok(<span class="hl-built_in">bytes</span>)</code>
+<code>    <span class="hl-keyword">return</span> inner(path.ref)</code></pre>
+
+</figure>
+<p>And, to conclude, CrabML:</p>
+
+<figure class="code-block">
+
+
+<pre><code>read :: 'p  ref_of =&gt; 'p -&gt; u8 vec io.either.t</code>
+<code>let read p =</code>
+<code>  let</code>
+<code>    inner :: &amp;path -&gt; u8 vec.t io.either.t</code>
+<code>    inner p =</code>
+<code>      let mut file = try (File.open p) in</code>
+<code>      let mut bytes = vec.new () in</code>
+<code>      try (file.read_to_end (&amp;mut bytes)); Right bytes</code>
+<code>  in</code>
+<code>    ref_op p |&gt; inner</code>
+<code>;;</code></pre>
+
+</figure>
+<p>As a slightly more serious and useful exercise, let&rsquo;s do the opposite &mdash; keep the Rust syntax, but try to simplify semantics until the end result looks presentable.</p>
+<p>Here&rsquo;s our starting point:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">read</span>&lt;P: <span class="hl-built_in">AsRef</span>&lt;Path&gt;&gt;(path: P) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;&gt; {</code>
+<code>  <span class="hl-keyword">fn</span> <span class="hl-title function_">inner</span>(path: &amp;Path) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;&gt; {</code>
+<code>    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">file</span> = File::<span class="hl-title function_ invoke__">open</span>(path)?;</code>
+<code>    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">bytes</span> = <span class="hl-type">Vec</span>::<span class="hl-title function_ invoke__">new</span>();</code>
+<code>    file.<span class="hl-title function_ invoke__">read_to_end</span>(&amp;<span class="hl-keyword">mut</span> bytes)?;</code>
+<code>    <span class="hl-title function_ invoke__">Ok</span>(bytes)</code>
+<code>  }</code>
+<code>  <span class="hl-title function_ invoke__">inner</span>(path.<span class="hl-title function_ invoke__">as_ref</span>())</code>
+<code>}</code></pre>
+
+</figure>
+<p>The biggest source of noise here is the nested function.
+The motivation for it is somewhat esoteric.
+The outer function is generic, while the inner function isn&rsquo;t.
+With the current compilation model, that means that the outer function is compiled together with the user&rsquo;s code, gets inlined and is optimized down to nothing.
+In contrast, the inner function is compiled when the std itself is being compiled, saving time when compiling user&rsquo;s code.
+One way to simplify this (losing a bit of performance) is to say that generic functions are always separately compiled, but accept an extra runtime argument under the hood which describes the physical dimension of input parameters.</p>
+<p>With that, we get</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">read</span>&lt;P: <span class="hl-built_in">AsRef</span>&lt;Path&gt;&gt;(path: P) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;&gt; {</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">file</span> = File::<span class="hl-title function_ invoke__">open</span>(path.<span class="hl-title function_ invoke__">as_ref</span>())?;</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">bytes</span> = <span class="hl-type">Vec</span>::<span class="hl-title function_ invoke__">new</span>();</code>
+<code>  file.<span class="hl-title function_ invoke__">read_to_end</span>(&amp;<span class="hl-keyword">mut</span> bytes)?;</code>
+<code>  <span class="hl-title function_ invoke__">Ok</span>(bytes)</code>
+<code>}</code></pre>
+
+</figure>
+<p>The next noisy element is the <code>&lt;P: AsRef&lt;Path&gt;&gt;</code> constraint.
+It is needed because Rust loves exposing physical layout of bytes in memory as an interface, specifically for cases where that brings performance.
+In particular, the meaning of <code>Path</code> is not that it is some abstract representation of a file path, but that it is just literally a bunch of contiguous bytes in memory.
+So we need <code>AsRef</code> to make this work with <em>any</em> abstraction which is capable of representing such a slice of bytes.
+But if we don&rsquo;t care about performance, we can require that all interfaces are fairly abstract and mediated via virtual function calls, rather than direct memory access.
+Then we won&rsquo;t need <code>AsRef</code>at all:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">read</span>(path: &amp;Path) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;&gt; {</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">file</span> = File::<span class="hl-title function_ invoke__">open</span>(path)?;</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">bytes</span> = <span class="hl-type">Vec</span>::<span class="hl-title function_ invoke__">new</span>();</code>
+<code>  file.<span class="hl-title function_ invoke__">read_to_end</span>(&amp;<span class="hl-keyword">mut</span> bytes)?;</code>
+<code>  <span class="hl-title function_ invoke__">Ok</span>(bytes)</code>
+<code>}</code></pre>
+
+</figure>
+<p>Having done this, we can actually get rid of <code>Vec&lt;u8&gt;</code> as well &mdash; we can no longer use generics to express efficient growable array of bytes in the language itself.
+We&rsquo;d have to use some opaque <code>Bytes</code> type provided by the runtime:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">read</span>(path: &amp;Path) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;Bytes&gt; {</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">file</span> = File::<span class="hl-title function_ invoke__">open</span>(path)?;</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">bytes</span> = Bytes::<span class="hl-title function_ invoke__">new</span>();</code>
+<code>  file.<span class="hl-title function_ invoke__">read_to_end</span>(&amp;<span class="hl-keyword">mut</span> bytes)?;</code>
+<code>  <span class="hl-title function_ invoke__">Ok</span>(bytes)</code>
+<code>}</code></pre>
+
+</figure>
+<p>Technically, we are still carrying ownership and borrowing system with us, but, without direct control over memory layout of types, it no longer brings massive performance benefits.
+It still helps to avoid GC, prevent iterator invalidation, and statically check that non-thread-safe code isn&rsquo;t actually used across threads.
+Still, we can easily get rid of those &amp;-pretzels if we just switch to GC.
+We don&rsquo;t even need to worry about concurrency much &mdash; as our objects are separately allocated and always behind a pointer, we can hand-wave data races away by noticing that operations with pointer-sized things are atomic on x86 anyway.</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">read</span>(path: Path) <span class="hl-punctuation">-&gt;</span> io::<span class="hl-type">Result</span>&lt;Bytes&gt; {</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-variable">file</span> = File::<span class="hl-title function_ invoke__">open</span>(path)?;</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-variable">bytes</span> = Bytes::<span class="hl-title function_ invoke__">new</span>();</code>
+<code>  file.<span class="hl-title function_ invoke__">read_to_end</span>(bytes)?;</code>
+<code>  <span class="hl-title function_ invoke__">Ok</span>(bytes)</code>
+<code>}</code></pre>
+
+</figure>
+<p>Finally, we are being overly pedantic with error handling here &mdash; not only we mention a possibility of failure in the return type, we even use <code>?</code> to highlight any specific expression that might fail.
+It would be much simpler to not think about error handling at all, and let some top-level<br>
+<code>try { } catch (...) { /* intentionally empty */ }</code><br>
+handler deal with it:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">read</span>(path: Path) <span class="hl-punctuation">-&gt;</span> Bytes {</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-variable">file</span> = File::<span class="hl-title function_ invoke__">open</span>(path);</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-variable">bytes</span> = Bytes::<span class="hl-title function_ invoke__">new</span>();</code>
+<code>  file.<span class="hl-title function_ invoke__">read_to_end</span>(bytes);</code>
+<code>  bytes</code>
+<code>}</code></pre>
+
+</figure>
+<p><strong><strong>Much</strong></strong> better now!</p>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Next Rust Compiler</title>
+<link href="https://matklad.github.io/2023/01/25/next-rust-compiler.html" rel="alternate" type="text/html" title="Next Rust Compiler" />
+<published>2023-01-25T00:00:00+00:00</published>
+<updated>2023-01-25T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/01/25/next-rust-compiler</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[In Rust in 2023, @nrc floated an idea of a Rust compiler rewrite.
+As my hobby is writing Rust compiler frontends (1, 2), I have some (but not very many) thoughts here!
+The post consists of two parts, covering organizational and technical aspects.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/01/25/next-rust-compiler.html"><![CDATA[
+    <h1>
+    <a href="#Next-Rust-Compiler">Next Rust Compiler <time datetime="2023-01-25">Jan 25, 2023</time></a>
+    </h1>
+<p>In <a href="https://www.ncameron.org/blog/rust-in-2023/">Rust in 2023</a>, <a href="http://github.com/nrc">@nrc</a> floated an idea of a Rust compiler rewrite.
+As my hobby is writing Rust compiler frontends (<a href="https://github.com/intellij-rust/intellij-rust">1</a>, <a href="https://github.com/rust-lang/rust-analyzer">2</a>), I have some (but not very many) thoughts here!
+The post consists of two parts, covering organizational and technical aspects.</p>
+<section id="Organization">
+
+    <h2>
+    <a href="#Organization">Organization </a>
+    </h2>
+<p>Writing a production-grade compiler is not a small endeavor.
+The questions of who writes the code, who pays the people writing the code, and what&rsquo;s the economic incentive to fund the work in the first place are quite important.</p>
+<p>My naive guesstimate is that Rust is currently at that stage of its life where it&rsquo;s clear that the language won&rsquo;t die, and would be deployed quite widely, but where, at the same time, the said deployment didn&rsquo;t quite happen to the full extent yet.
+From within the Rust community, it seems like Rust is everywhere.
+My guess is that from the outside it looks like there&rsquo;s Rust in at least some places.</p>
+<p>In other words, it&rsquo;s high time to invest substantially into Rust ecosystem, as the risk that the investment sinks completely is relatively low, but the expected growth is still quite high.
+This makes me think that a next-gen rust compiler isn&rsquo;t too unlikely: I feel that rustc is stuck in a local optimum, and that, with some boldness, it is possible to deliver something more awesome.</p>
+</section>
+<section id="Technicalities">
+
+    <h2>
+    <a href="#Technicalities">Technicalities </a>
+    </h2>
+<p>Here&rsquo;s what I think an awesome rust compiler would do:</p>
+<dl>
+<dt>rust-native compilation model</dt>
+<dd>
+<p>Like C++, Rust (ab)uses the C compilation model &mdash; compilation units are separately compiled into object files, which are then linked into a single executable by the linker.
+This model is at odds with how the language work.
+In particular, compiling a generic function isn&rsquo;t actually possible until you know specific type parameters at the call-site.
+Rust and C++ hack around that by compiling a separate copy for every call-site (C++ even re-type-checks every call-site), and deduplicating instantiations during the link step.
+This creates a lot of wasted work, which is only there because we try to follow &ldquo;compile to object files then link&rdquo; model of operation.
+It would be significantly more efficient to merge compiler and linker, such that only the minimal amount of code is compiled, compiled code is fully aware about surrounding context and can be inlined across crates, and where the compilation makes the optimal use of all available CPU and RAM.</p>
+</dd>
+<dt>intra-crate parallelism</dt>
+<dd>
+<p>C compilation model is not stupid &mdash; it is the way it is to enable separate compilation.
+Back in the day, compiling whole programs was simply not possible due to the limitations of the hardware.
+Rather, a program had to be compiled in separate parts, and then the parts linked together into the final artifact.
+With bigger computers today, we don&rsquo;t think about separate compilation as much.
+It is still important though &mdash; not only our computers are more powerful, our programs are much bigger.
+Moreover, computing power comes not from increasing clock speeds, but from a larger number of cores.</p>
+<p>Rust&rsquo;s DAG of anonymous crates with well-defined declaration-site checked interfaces is actually quite great for compiling Rust in parallel (especially if we get rid of completely accidental interactions between monomorphization and existing linkers).
+However, even a single crate can be quite large, and is compiled sequentially.
+For example, in the <a href="https://quick-lint-js.com/blog/cpp-vs-rust-build-times">recent compile time benchmark</a>, a significant chunk of time was spent compiling just this <a href="https://github.com/quick-lint/cpp-vs-rust/blob/master/rust/libs/fe/tests/test_lex.rs">file</a> with a bunch of functions.
+Intuitively, as all these functions are completely independent, compiler should be able to process them in parallel.
+In reality, Rust doesn&rsquo;t actually make that as easy as it seems, but it definitely is possible to do better than the current compiler.</p>
+</dd>
+<dt>open-world compiling; stable MIR</dt>
+<dd>
+<p>Today, Rust tooling is a black-box &ndash; you feed it with source text and an executable binary for the output.
+This solves the problem of producing executable binaries quite well!</p>
+<p>However, for more complex projects you want to have more direct relationship with the code.
+You want tools other than compiler to understand the meaning of the code, and to act on it.
+For example automated large scale refactors and code analysis, project-specific linting rules or formal proofs of correctness all could benefit from having an access to semantically rich model of the language.</p>
+<p>Providing such semantic  model, where AST is annotated with resolved names, inferred types, and bodies are converted to a simple and precise IR, is a huge ask.
+Not because it is technically hard to implement, but because this adds an entirely new stable API to the language.
+Nonetheless, such an API would unlock quite a few use cases, so the tradeoff is worth it.</p>
+</dd>
+<dt>hermetic deterministic compilation</dt>
+<dd>
+<p>It is increasingly common to want reproducible builds.
+With NixOS and Guix, whole Linux distros are built in a deterministic fashion.
+It is possible to achieve reproducibility by carefully freezing whatever mess you are currently in, the docker way.
+But a better approach is to start with inherently pure and hermetic components, and assemble them into a larger system.</p>
+<p>Today, Rust has some amount of determinism in its compilation, but it is achieved by plugging loopholes, rather than by not admitting impurities into the system in the first place.
+For example, the <a href="https://github.com/rust-lang/rust/blob/027c8507b4265dcf285b0b503e2a49214b929f7b/compiler/rustc_builtin_macros/src/env.rs#L81"><code>env!</code></a> macro literally looks up a value in compiler&rsquo;s environment, without any attempt at restricting or at least enumerating available inputs.
+Procedural macros are an unrestricted RCE.</p>
+<p>It feels like we can do better, and that we should do better, if the goal is still <a href="http://venge.net/graydon/talks/intro-talk-2.pdf">less mess</a>.</p>
+</dd>
+<dt>lazy and error-resilient compilation</dt>
+<dd>
+<p>For the task of providing immediate feedback right in the editor when the user types the code, compilation &ldquo;pipeline&rdquo; needs to be changed significantly.
+It should be lazy (so that only the minimal amount of code is inspected and re-analyzed on typing) and resilient and robust to errors (IDE job mostly ends when the code is error free).
+<a href="https://rust-analyzer.github.io">rust-analyzer</a> shows one possible way to do that, with the only drawback of being a completely separate tool for IDE, and only IDE.
+There&rsquo;s no technical limitation why the full compiler can&rsquo;t be like that, just the organizational limitation of it being very hard to re-architecture existing entrenched code, perfected for its local optimum.</p>
+</dd>
+<dt><code>cargo install rust-compiler</code></dt>
+<dd>
+<p>Finally, for the benefit of compiler writers themselves, a compiler should be a simple rust crate, which builds with stable Rust and is otherwise a very boring text processing utility.
+Again, rust-analyzer shows that it is possible, and that the benefits for development velocity are enormous.
+I am glad to see <a href="https://jyn.dev/2023/01/12/Bootstrapping-Rust-in-2023.html">a recent movement</a> to making the build process for the compiler simpler!</p>
+</dd>
+</dl>
+<p>Discussion on <a href="https://old.reddit.com/r/rust/comments/10ld2vn/blog_post_next_rust_compiler/">/r/rust</a></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">On Random Numbers</title>
+<link href="https://matklad.github.io/2023/01/04/on-random-numbers.html" rel="alternate" type="text/html" title="On Random Numbers" />
+<published>2023-01-04T00:00:00+00:00</published>
+<updated>2023-01-04T00:00:00+00:00</updated>
+<id>https://matklad.github.io/2023/01/04/on-random-numbers</id>
+<author><name>Alex Kladov</name></author>
+<summary type="html"><![CDATA[This is a short post which decomposes random numbers topic into principal components and maps them to Rust ecosystem.]]></summary>
+<content type="html" xml:base="https://matklad.github.io/2023/01/04/on-random-numbers.html"><![CDATA[
+    <h1>
+    <a href="#On-Random-Numbers">On Random Numbers <time datetime="2023-01-04">Jan 4, 2023</time></a>
+    </h1>
+<p>This is a short post which decomposes &ldquo;random numbers&rdquo; topic into principal components and maps them to Rust ecosystem.</p>
+<section id="True-Randomness">
+
+    <h2>
+    <a href="#True-Randomness">True Randomness </a>
+    </h2>
+<p>For cryptographic purposes (eg, generating a key pair for public key cryptography), you want to use real random numbers, derived from genuinely stochastic physical signals
+(hardware random number generator, keyboard input, etc).
+The shape of the API here is:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">fn</span> <span class="hl-title function_">fill_buffer_with_random_data</span>(buf: &amp;<span class="hl-keyword">mut</span> [<span class="hl-type">u8</span>])</code></pre>
+
+</figure>
+<p>As this fundamentally requires talking to some physical devices, this task is handled by the operating system.
+Different operating systems provide different APIs, covering which is beyond the scope of this article (and my own knowledge).</p>
+<p>In Rust, <a href="https://lib.rs/getrandom"><code>getrandom</code></a> crate provides a cross-platform wrapper for this functionality.</p>
+<p>It is a major deficiency of Rust standard library that this functionality is not exposed there.
+Getting cryptographically secure random data is in the same class of OS services as getting the current time or reading standard input.
+Arguably, it&rsquo;s even more important, as most applications for this functionality are security-critical.</p>
+</section>
+<section id="Pseudorandom-Number-Generator">
+
+    <h2>
+    <a href="#Pseudorandom-Number-Generator">Pseudorandom Number Generator </a>
+    </h2>
+<p>For various non-cryptographic randomized algorithms, you want to start with a fixed, deterministic <code>seed</code>, and generate a stream of numbers, statistically indistinguishable from random.
+The shape of the API here is:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">fn</span> <span class="hl-title function_">random_u32</span>(state: &amp;<span class="hl-keyword">mut</span> <span class="hl-type">f64</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">u32</span></code></pre>
+
+</figure>
+<p>There are many different algorithms to do that.
+<a href="https://lib.rs/fastrand"><code>fastrand</code></a> crate implements something sufficiently close to the state of the art.</p>
+<p>Alternatively, a good-enough PRNG can be implemented in 9 lines of code:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">random_numbers</span>(seed: <span class="hl-type">u32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Iterator</span>&lt;Item = <span class="hl-type">u32</span>&gt; {</code>
+<code>  <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">random</span> = seed;</code>
+<code>  std::iter::<span class="hl-title function_ invoke__">repeat_with</span>(<span class="hl-keyword">move</span> || {</code>
+<code>    random ^= random &lt;&lt; <span class="hl-number">13</span>;</code>
+<code>    random ^= random &gt;&gt; <span class="hl-number">17</span>;</code>
+<code>    random ^= random &lt;&lt; <span class="hl-number">5</span>;</code>
+<code>    random</code>
+<code>  })</code>
+<code>}</code></pre>
+
+</figure>
+<p>This code was lifted from Rust&rsquo;s standard library (<a href="https://github.com/rust-lang/rust/blob/1.55.0/library/core/src/slice/sort.rs#L559-L573">source</a>).</p>
+<p>The best way to seed a PRNG is usually by using a fixed constant.
+If you absolutely need <em>some</em> amount of randomness in the seed, you can use the following hack:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">random_seed</span>() <span class="hl-punctuation">-&gt;</span> <span class="hl-type">u64</span> {</code>
+<code>  std::hash::Hasher::<span class="hl-title function_ invoke__">finish</span>(&amp;std::hash::BuildHasher::<span class="hl-title function_ invoke__">build_hasher</span>(</code>
+<code>    &amp;std::collections::hash_map::RandomState::<span class="hl-title function_ invoke__">new</span>(),</code>
+<code>  ))</code>
+<code>}</code></pre>
+
+</figure>
+<p>In Rust, hash maps include some amount of randomization to avoid exploitable pathological behavior due to collisions.
+The above snippet extracts that randomness.</p>
+</section>
+<section id="Non-Uniformly-Distributed-Random-Numbers-Uniformly-Distributed-Random-Non-Numbers">
+
+    <h2>
+    <a href="#Non-Uniformly-Distributed-Random-Numbers-Uniformly-Distributed-Random-Non-Numbers">Non-Uniformly Distributed Random Numbers, Uniformly Distributed Random Non-Numbers. </a>
+    </h2>
+<p>Good PRNG gives you a sequence of <code>u32</code> numbers where each number is as likely as every other one.
+You can convert that to a number from 0 to 10 with <code>random_u32() % 10</code>.
+This will be good enough for most purposes, but will fail rigorous statistical tests.
+Because 2<sup>32</sup> isn&rsquo;t evenly divisible by 10, 0 would be ever so slightly more frequent than <code>9</code>.
+There is an algorithm to do this correctly (if <code>random_u32()</code> is very large, and falls into the literal remainder after dividing 2<sup>32</sup> by 10, throw it away and try again).</p>
+<p>Sometimes you you want to use <code>random_u32()</code> to generate other kinds of random things, like a random point on a 3D sphere, or a random permutation.
+There are also algorithms for that.</p>
+<p>Sphere: generate random point in the unit cube; if it is also in the unit ball, project it onto the surface, otherwise throw it away and try again.</p>
+<p>Permutation: naive algorithm of selecting a random element to be the first, then selecting a random element among the rest to be the second, etc, works.</p>
+<p>There are libraries which provide collections of such algorithms.
+For example, <code>fastrand</code> includes most common ones, like generating numbers in range, generating floating point numbers or shuffling slices.</p>
+<p><code>rand</code> includes more esoteric cases line the aforementioned point on a sphere or a normal distribution.</p>
+</section>
+<section id="Ambient-Global-Source-Of-Random-Numbers">
+
+    <h2>
+    <a href="#Ambient-Global-Source-Of-Random-Numbers">Ambient Global Source Of Random Numbers </a>
+    </h2>
+<p>It is customary to expect existence of a global random number generator seeded for you.
+This is an anti-pattern &mdash; in the overwhelming majority of cases, passing a random number generator explicitly leads to better software.
+In particular, this is a requirement for deterministic tests.</p>
+<p>In any case, this functionality can be achieved by storing a state of PRNG in a thread local:</p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="hl-keyword">use</span> std::cell::Cell;</code>
+<code></code>
+<code><span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">thread_local_random_u32</span>() <span class="hl-punctuation">-&gt;</span> <span class="hl-type">u32</span> {</code>
+<code>  thread_local! {</code>
+<code>      <span class="hl-keyword">static</span> STATE: Cell&lt;<span class="hl-type">u64</span>&gt; = Cell::<span class="hl-title function_ invoke__">new</span>(<span class="hl-title function_ invoke__">random_seed</span>())</code>
+<code>  }</code>
+<code>  STATE.<span class="hl-title function_ invoke__">with</span>(|cell| {</code>
+<code>    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">state</span> = cell.<span class="hl-title function_ invoke__">get</span>();</code>
+<code>    <span class="hl-keyword">let</span> <span class="hl-variable">result</span> = <span class="hl-title function_ invoke__">random_u32</span>(&amp;<span class="hl-keyword">mut</span> state);</code>
+<code>    cell.<span class="hl-title function_ invoke__">set</span>(state);</code>
+<code>    result</code>
+<code>  })</code>
+<code>}</code></pre>
+
+</figure>
+</section>
+<section id="rand">
+
+    <h2>
+    <a href="#rand">rand </a>
+    </h2>
+<p><a href="https://lib.rs/rand"><code>rand</code></a> is an umbrella crate which includes all of the above.
+<code>rand</code> also provides flexible trait-based &ldquo;plugin&rdquo; interface, allowing you to mix and match different combinations of PRNGs and algorithms.
+User interface of <code>rand</code> is formed primarily by extension traits.</p>
+</section>
+<section id="Kinds-Of-Randomness">
+
+    <h2>
+    <a href="#Kinds-Of-Randomness">Kinds Of Randomness </a>
+    </h2>
+<p>Circling back to the beginning of the post, it is very important to distinguish between the two use-cases:</p>
+<ul>
+<li>
+using unpredictable data for cryptography
+</li>
+<li>
+using statistically uniform random data for stochastic algorithms
+</li>
+</ul>
+<p>Although the two use-cases both have &ldquo;randomness&rdquo; in their name, they are disjoint, and underlying algorithms and APIs don&rsquo;t have anything in common.
+They are physically different: one is a syscall, another is a pure function mapping integers to integers.</p>
+</section>
+]]></content>
+</entry>
+
+</feed>
